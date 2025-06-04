@@ -7,17 +7,15 @@ import { SocketProvider } from '@/contexts/socket-context';
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light" storageKey="callcenterx-theme">
-      <AuthProvider>
-        <SocketProvider>
-          <Router>
+    <Router>
+      <ThemeProvider defaultTheme="light" storageKey="callcenterx-theme">
+        <AuthProvider>
+          <SocketProvider>
             <AppRoutes />
             <Toaster />
-          </Router>
-        </SocketProvider>
-      </AuthProvider>
-    </ThemeProvider>
+          </SocketProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Router>
   );
 }
-
-export default App;
