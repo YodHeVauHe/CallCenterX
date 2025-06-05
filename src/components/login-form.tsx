@@ -42,8 +42,8 @@ export function LoginForm({
   return (
     <div className={cn("w-full max-w-[440px]", className)} {...props}>
       <Card className="overflow-hidden p-0">
-        <CardContent className="p-0">
-          <form onSubmit={onSubmit} className="space-y-6 p-8">
+        <CardContent>
+          <form onSubmit={onSubmit} className="space-y-6 p-6">
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Welcome back</h1>
