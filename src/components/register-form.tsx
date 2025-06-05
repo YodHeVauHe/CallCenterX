@@ -45,9 +45,9 @@ export function RegisterForm({
 
   return (
     <div className={cn("w-full max-w-[440px]", className)} {...props}>
-      <Card className="overflow-hidden p-0">
+      <Card>
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-6 p-6">
+          <form onSubmit={onSubmit} className="space-y-4">
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Create an account</h1>
