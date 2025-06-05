@@ -46,7 +46,7 @@ export function RegisterForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
-        <CardContent className="grid p-0 md:grid-cols-2">
+        <CardContent className="p-0">
           <form onSubmit={onSubmit} className="p-6 md:p-8">
             <div className="flex flex-col gap-6">
               <div className="flex flex-col items-center text-center">
@@ -147,13 +147,6 @@ export function RegisterForm({
               </div>
             </div>
           </form>
-          <div className="bg-muted relative hidden md:block">
-            <img
-              src="https://images.pexels.com/photos/1181396/pexels-photo-1181396.jpeg"
-              alt="Modern office workspace"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-            />
-          </div>
         </CardContent>
       </Card>
       <div className="text-muted-foreground text-center text-xs text-balance">
