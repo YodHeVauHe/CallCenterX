@@ -9,7 +9,6 @@ type AuthContextType = {
   logout: () => void;
   register: (email: string, password: string, name: string) => Promise<void>;
   refreshUser: () => Promise<void>;
-  createOrganization: (name: string, type: string, size?: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,57 +18,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Check for stored session on app load
   useEffect(() => {
-    const storedUser = localStorage.getItem('callcenterx_user');
-    const storedToken = localStorage.getItem('callcenterx_token');
-    
-    if (storedUser && storedToken) {
+    // For now, let's use mock authentication to get the app working
+    // This simulates checking for an existing session
+    const checkUser = async () => {
       try {
-        const userData = JSON.parse(storedUser);
-        setUser(userData);
+        // Check if user is stored in localStorage (mock session)
+        const storedUser = localStorage.getItem('mock_user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+        }
       } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('callcenterx_user');
-        localStorage.removeItem('callcenterx_token');
+        console.error('Error checking user session:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    checkUser();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Login failed');
-      }
-
-      const data = await response.json();
-      
-      if (data.user && data.session) {
-        // Store session data
-        localStorage.setItem('callcenterx_user', JSON.stringify(data.user));
-        localStorage.setItem('callcenterx_token', data.session.access_token);
+      // Mock authentication - in production this would be Supabase
+      if (email && password) {
+        const mockUser: User = {
+          id: '1',
+          name: 'Demo User',
+          email,
+          avatar: 'https://i.pravatar.cc/150?img=68',
+          organizations: [
+            {
+              id: '1',
+              name: 'Demo Organization',
+              slug: 'demo-org',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          ],
+        };
         
-        setUser(data.user);
+        setUser(mockUser);
+        localStorage.setItem('mock_user', JSON.stringify(mockUser));
         
-        // Redirect based on organization status
-        if (data.user.organizations.length === 0) {
-          navigate('/setup-organization');
-        } else {
-          navigate('/dashboard');
-        }
+        // Redirect to dashboard since user has organizations
+        navigate('/dashboard');
+      } else {
+        throw new Error('Invalid credentials');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -81,28 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      // Call logout endpoint if available
-      const token = localStorage.getItem('callcenterx_token');
-      if (token) {
-        try {
-          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/logout`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-        } catch (error) {
-          console.error('Logout endpoint error:', error);
-        }
-      }
+      setUser(null);
+      localStorage.removeItem('mock_user');
+      navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      // Always clear local storage and state
-      localStorage.removeItem('callcenterx_user');
-      localStorage.removeItem('callcenterx_token');
-      setUser(null);
-      navigate('/login');
     }
   };
 
@@ -110,32 +91,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ email, password, name }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Registration failed');
-      }
-
-      const data = await response.json();
-      
-      if (data.user && data.session) {
-        // Store session data
-        localStorage.setItem('callcenterx_user', JSON.stringify(data.user));
-        localStorage.setItem('callcenterx_token', data.session.access_token);
+      // Mock registration - in production this would be Supabase
+      if (email && password && name) {
+        const mockUser: User = {
+          id: '1',
+          name,
+          email,
+          avatar: 'https://i.pravatar.cc/150?img=68',
+          organizations: [], // New users start with no organizations
+        };
         
-        setUser(data.user);
+        setUser(mockUser);
+        localStorage.setItem('mock_user', JSON.stringify(mockUser));
+        
+        // Redirect to organization setup since user has no organizations
         navigate('/setup-organization');
-      } else if (data.user && !data.session) {
-        // Email confirmation required
-        throw new Error('Please check your email for a verification link before signing in.');
+      } else {
+        throw new Error('All fields are required');
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -147,69 +119,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const token = localStorage.getItem('callcenterx_token');
-      if (!token) return;
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
+      // Mock refresh - in production this would fetch from Supabase
+      const storedUser = localStorage.getItem('mock_user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
         setUser(userData);
-        localStorage.setItem('callcenterx_user', JSON.stringify(userData));
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
     }
   };
 
-  const createOrganization = async (name: string, type: string, size?: string) => {
-    try {
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      setLoading(true);
-      const token = localStorage.getItem('callcenterx_token');
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-organization`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: name.trim(), type, size }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create organization');
-      }
-
-      // Refresh user data to get the new organization
-      await refreshUser();
-
-    } catch (error) {
-      console.error('Create organization error:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      login, 
-      logout, 
-      register, 
-      refreshUser, 
-      createOrganization 
-    }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
