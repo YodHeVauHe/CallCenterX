@@ -31,7 +31,7 @@ export function LoginForm({
     } catch (error) {
       toast({
         title: "Error",
-        description: "Invalid email or password.",
+        description: error instanceof Error ? error.message : "Invalid email or password.",
         variant: "destructive",
       })
     } finally {

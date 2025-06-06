@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/auth-context"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { UserRole } from "@/types/user"
 
 export function RegisterForm({
   className,
@@ -14,6 +16,7 @@ export function RegisterForm({
 }: React.ComponentProps<"div">) {
   const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  const [role, setRole] = useState<UserRole>("admin")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -24,7 +27,7 @@ export function RegisterForm({
 
     try {
       setIsLoading(true)
-      await register(email, password, name, "admin")
+      await register(email, password, name, role)
       toast({
         title: "Success",
         description: "Your account has been created.",
@@ -32,7 +35,7 @@ export function RegisterForm({
     } catch (error) {
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -82,6 +85,22 @@ export function RegisterForm({
                   required
                   disabled={isLoading}
                 />
+              </div>
+              <div className="grid gap-3">
+                <Label htmlFor="role">Role</Label>
+                <Select
+                  value={role}
+                  onValueChange={(value) => setRole(value as UserRole)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="agent">Agent</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating account..." : "Create Account"}
