@@ -57,16 +57,7 @@ export function SetupOrganization() {
   const [organizationType, setOrganizationType] = useState('');
   const [companySize, setCompanySize] = useState('');
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
-
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
+  const { user, createOrganization } = useAuth();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -92,25 +83,7 @@ export function SetupOrganization() {
     try {
       setIsLoading(true);
 
-      // Mock organization creation - in production this would be Supabase
-      const newOrganization = {
-        id: Date.now().toString(),
-        name: organizationName.trim(),
-        slug: generateSlug(organizationName),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Update user with new organization
-      if (user) {
-        const updatedUser = {
-          ...user,
-          organizations: [...user.organizations, newOrganization],
-        };
-        
-        localStorage.setItem('mock_user', JSON.stringify(updatedUser));
-        await refreshUser();
-      }
+      await createOrganization(organizationName, organizationType, companySize);
 
       toast({
         title: 'Success!',
@@ -129,6 +102,18 @@ export function SetupOrganization() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  // Show loading if user is not loaded yet
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
