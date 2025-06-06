@@ -73,7 +73,17 @@ export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user?.name}</p>
+                <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                {user?.organizations && user.organizations.length > 0 && (
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user.organizations.length} organization{user.organizations.length > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>

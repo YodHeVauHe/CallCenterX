@@ -3,8 +3,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
-  organizationId?: string;
-  hasOrganization: boolean;
+  organizations: Organization[];
 }
 
 export interface Organization {

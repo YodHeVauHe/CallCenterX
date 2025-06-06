@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context';
 import { Building, ArrowRight } from 'lucide-react';
 
 const supabase = createClient(
@@ -17,6 +18,7 @@ const supabase = createClient(
 export function SetupOrganization() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
 
   const generateSlug = (name: string) => {
     return name
@@ -69,24 +71,27 @@ export function SetupOrganization() {
         throw orgError;
       }
 
-      // Update user profile with organization
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
         throw new Error('User not found');
       }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
+      // Add user to organization via user_organizations table
+      const { error: userOrgError } = await supabase
+        .from('user_organizations')
+        .insert({
+          user_id: user.id,
           organization_id: organization.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+        });
 
-      if (profileError) {
-        throw profileError;
+      if (userOrgError) {
+        throw userOrgError;
       }
+
+      // Refresh user data to include new organization
+      await refreshUser();
 
       toast({
         title: 'Success!',

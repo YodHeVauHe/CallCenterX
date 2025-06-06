@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
-import { User } from '@/types/user';
+import { User, Organization } from '@/types/user';
 
 type AuthContextType = {
   user: User | null;
@@ -9,6 +9,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (email: string, password: string, name: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +29,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const fetchUserWithOrganizations = async (userId: string): Promise<User | null> => {
+    try {
+      // Fetch user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('Error fetching profile:', profileError);
+        return null;
+      }
+
+      // Fetch user's organizations
+      const { data: userOrgs, error: userOrgsError } = await supabase
+        .from('user_organizations')
+        .select('organization_id')
+        .eq('user_id', userId);
+
+      if (userOrgsError) {
+        console.error('Error fetching user organizations:', userOrgsError);
+        return null;
+      }
+
+      let organizations: Organization[] = [];
+
+      if (userOrgs && userOrgs.length > 0) {
+        const orgIds = userOrgs.map(uo => uo.organization_id);
+        
+        const { data: orgs, error: orgsError } = await supabase
+          .from('organizations')
+          .select('*')
+          .in('id', orgIds);
+
+        if (orgsError) {
+          console.error('Error fetching organizations:', orgsError);
+        } else if (orgs) {
+          organizations = orgs.map(org => ({
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            createdAt: org.created_at,
+            updatedAt: org.updated_at,
+          }));
+        }
+      }
+
+      return {
+        id: profile.id,
+        email: profile.email,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+        avatar: undefined, // Will be set from auth user metadata if available
+        organizations,
+      };
+    } catch (error) {
+      console.error('Error fetching user with organizations:', error);
+      return null;
+    }
+  };
+
+  const refreshUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const userData = await fetchUserWithOrganizations(session.user.id);
+      if (userData) {
+        userData.avatar = session.user.user_metadata?.avatar_url;
+        setUser(userData);
+      }
+    }
+  };
+
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
@@ -35,22 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          // Fetch user profile from database
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*, organizations(*)')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profile) {
-            const userData: User = {
-              id: session.user.id,
-              email: session.user.email!,
-              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-              avatar: session.user.user_metadata?.avatar_url,
-              organizationId: profile.organization_id,
-              hasOrganization: !!profile.organization_id,
-            };
+          const userData = await fetchUserWithOrganizations(session.user.id);
+          if (userData) {
+            userData.avatar = session.user.user_metadata?.avatar_url;
             setUser(userData);
           }
         }
@@ -69,22 +129,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_OUT' || !session) {
           setUser(null);
         } else if (event === 'SIGNED_IN' && session?.user) {
-          // Fetch user profile from database
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*, organizations(*)')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profile) {
-            const userData: User = {
-              id: session.user.id,
-              email: session.user.email!,
-              name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-              avatar: session.user.user_metadata?.avatar_url,
-              organizationId: profile.organization_id,
-              hasOrganization: !!profile.organization_id,
-            };
+          const userData = await fetchUserWithOrganizations(session.user.id);
+          if (userData) {
+            userData.avatar = session.user.user_metadata?.avatar_url;
             setUser(userData);
           }
         }
@@ -107,18 +154,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
 
-      // The auth state change listener will handle setting the user
-      // Redirect based on whether user has an organization
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', data.user.id)
-        .single();
+      // Fetch user data with organizations
+      const userData = await fetchUserWithOrganizations(data.user.id);
+      if (userData) {
+        userData.avatar = data.user.user_metadata?.avatar_url;
+        setUser(userData);
 
-      if (profile?.organization_id) {
-        navigate('/dashboard');
-      } else {
-        navigate('/setup-organization');
+        // Redirect based on whether user has organizations
+        if (userData.organizations.length > 0) {
+          navigate('/dashboard');
+        } else {
+          navigate('/setup-organization');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -178,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
