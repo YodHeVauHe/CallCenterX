@@ -34,7 +34,7 @@ const ProtectedRoute = ({
     if (user.role === 'admin') {
       return <Navigate to="/dashboard\" replace />;
     } else if (user.role === 'agent') {
-      return <Navigate to="/agent-dashboard" replace />;
+      return <Navigate to="/agent-dashboard\" replace />;
     } else {
       return <Navigate to="/customer\" replace />;
     }
