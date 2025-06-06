@@ -3,11 +3,20 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// For development, provide fallback values to prevent crashes
+const defaultUrl = 'https://demo.supabase.co'
+const defaultKey = 'demo-key'
+
+const finalUrl = supabaseUrl || defaultUrl
+const finalKey = supabaseAnonKey || defaultKey
+
+// Log warning if using demo values
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
+  console.warn('⚠️ Missing Supabase environment variables. Using demo values. Please set up your .env file.')
+  console.warn('Required variables: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(finalUrl, finalKey)
 
 // Database types
 export interface Database {
