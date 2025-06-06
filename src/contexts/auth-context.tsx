@@ -38,44 +38,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single();
 
-      if (profileError || !profile) {
+      if (profileError) {
         console.error('Error fetching profile:', profileError);
         return null;
       }
 
-      // Fetch user's organizations
-      const { data: userOrgs, error: userOrgsError } = await supabase
+      if (!profile) {
+        console.log('No profile found for user:', userId);
+        return null;
+      }
+
+      // Fetch user's organizations through the junction table
+      const { data: userOrganizations, error: userOrgsError } = await supabase
         .from('user_organizations')
-        .select('organization_id')
+        .select(`
+          organization_id,
+          organizations (
+            id,
+            name,
+            slug,
+            created_at,
+            updated_at
+          )
+        `)
         .eq('user_id', userId);
 
       if (userOrgsError) {
         console.error('Error fetching user organizations:', userOrgsError);
-        return null;
+        // Don't fail completely if organizations can't be fetched
       }
 
-      let organizations: Organization[] = [];
-
-      if (userOrgs && userOrgs.length > 0) {
-        const orgIds = userOrgs.map(uo => uo.organization_id);
-        
-        const { data: orgs, error: orgsError } = await supabase
-          .from('organizations')
-          .select('*')
-          .in('id', orgIds);
-
-        if (orgsError) {
-          console.error('Error fetching organizations:', orgsError);
-        } else if (orgs) {
-          organizations = orgs.map(org => ({
-            id: org.id,
-            name: org.name,
-            slug: org.slug,
-            createdAt: org.created_at,
-            updatedAt: org.updated_at,
-          }));
-        }
-      }
+      const organizations: Organization[] = userOrganizations
+        ? userOrganizations
+            .filter(uo => uo.organizations) // Filter out null organizations
+            .map(uo => ({
+              id: uo.organizations.id,
+              name: uo.organizations.name,
+              slug: uo.organizations.slug,
+              createdAt: uo.organizations.created_at,
+              updatedAt: uo.organizations.updated_at,
+            }))
+        : [];
 
       return {
         id: profile.id,
@@ -91,13 +94,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const userData = await fetchUserWithOrganizations(session.user.id);
-      if (userData) {
-        userData.avatar = session.user.user_metadata?.avatar_url;
-        setUser(userData);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const userData = await fetchUserWithOrganizations(session.user.id);
+        if (userData) {
+          userData.avatar = session.user.user_metadata?.avatar_url;
+          setUser(userData);
+        }
       }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
     }
   };
 
@@ -126,13 +133,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
         if (event === 'SIGNED_OUT' || !session) {
           setUser(null);
+          setLoading(false);
         } else if (event === 'SIGNED_IN' && session?.user) {
-          const userData = await fetchUserWithOrganizations(session.user.id);
-          if (userData) {
-            userData.avatar = session.user.user_metadata?.avatar_url;
-            setUser(userData);
+          try {
+            const userData = await fetchUserWithOrganizations(session.user.id);
+            if (userData) {
+              userData.avatar = session.user.user_metadata?.avatar_url;
+              setUser(userData);
+            }
+          } catch (error) {
+            console.error('Error fetching user data on sign in:', error);
+          } finally {
+            setLoading(false);
           }
         }
       }
