@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Organization } from '@/types/user';
-import { supabase } from '@/lib/supabase';
-import { AuthError, Session } from '@supabase/supabase-js';
 
 type AuthContextType = {
   user: User | null;
@@ -21,127 +19,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Generate slug from organization name
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
-
-  // Fetch user profile and organizations
-  const fetchUserProfile = async (session: Session) => {
-    try {
-      // Get user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        return null;
-      }
-
-      // Get user organizations
-      const { data: userOrgs, error: orgsError } = await supabase
-        .from('user_organizations')
-        .select(`
-          organization_id,
-          organizations (
-            id,
-            name,
-            slug,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', session.user.id);
-
-      if (orgsError) {
-        console.error('Error fetching organizations:', orgsError);
-        return null;
-      }
-
-      const organizations: Organization[] = userOrgs?.map(uo => ({
-        id: uo.organizations.id,
-        name: uo.organizations.name,
-        slug: uo.organizations.slug,
-        createdAt: uo.organizations.created_at,
-        updatedAt: uo.organizations.updated_at,
-      })) || [];
-
-      const userData: User = {
-        id: profile.id,
-        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-        email: profile.email,
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${profile.email}`,
-        organizations,
-      };
-
-      return userData;
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-      return null;
-    }
-  };
-
+  // Check for stored session on app load
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        fetchUserProfile(session).then(userData => {
-          setUser(userData);
-          setLoading(false);
-        });
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        const userData = await fetchUserProfile(session);
+    const storedUser = localStorage.getItem('callcenterx_user');
+    const storedToken = localStorage.getItem('callcenterx_token');
+    
+    if (storedUser && storedToken) {
+      try {
+        const userData = JSON.parse(storedUser);
         setUser(userData);
-      } else {
-        setUser(null);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('callcenterx_user');
+        localStorage.removeItem('callcenterx_token');
       }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       
-      // Check if we have proper Supabase configuration
-      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        throw new Error('Supabase is not configured. Please set up your environment variables.');
-      }
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
       }
 
+      const data = await response.json();
+      
       if (data.user && data.session) {
-        const userData = await fetchUserProfile(data.session);
-        setUser(userData);
+        // Store session data
+        localStorage.setItem('callcenterx_user', JSON.stringify(data.user));
+        localStorage.setItem('callcenterx_token', data.session.access_token);
+        
+        setUser(data.user);
         
         // Redirect based on organization status
-        if (userData?.organizations.length === 0) {
+        if (data.user.organizations.length === 0) {
           navigate('/setup-organization');
         } else {
           navigate('/dashboard');
@@ -157,11 +81,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
-      setUser(null);
-      navigate('/login');
+      // Call logout endpoint if available
+      const token = localStorage.getItem('callcenterx_token');
+      if (token) {
+        try {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/logout`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+        } catch (error) {
+          console.error('Logout endpoint error:', error);
+        }
+      }
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
+      // Always clear local storage and state
+      localStorage.removeItem('callcenterx_user');
+      localStorage.removeItem('callcenterx_token');
+      setUser(null);
+      navigate('/login');
     }
   };
 
@@ -169,32 +110,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       
-      // Check if we have proper Supabase configuration
-      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-        throw new Error('Supabase is not configured. Please set up your environment variables.');
-      }
-      
-      const [firstName, ...lastNameParts] = name.trim().split(' ');
-      const lastName = lastNameParts.join(' ');
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          },
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
+        body: JSON.stringify({ email, password, name }),
       });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Registration failed');
       }
 
+      const data = await response.json();
+      
       if (data.user && data.session) {
-        const userData = await fetchUserProfile(data.session);
-        setUser(userData);
+        // Store session data
+        localStorage.setItem('callcenterx_user', JSON.stringify(data.user));
+        localStorage.setItem('callcenterx_token', data.session.access_token);
+        
+        setUser(data.user);
         navigate('/setup-organization');
       } else if (data.user && !data.session) {
         // Email confirmation required
@@ -210,10 +147,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const userData = await fetchUserProfile(session);
+      const token = localStorage.getItem('callcenterx_token');
+      if (!token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
         setUser(userData);
+        localStorage.setItem('callcenterx_user', JSON.stringify(userData));
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
@@ -227,36 +173,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setLoading(true);
+      const token = localStorage.getItem('callcenterx_token');
 
-      const slug = generateSlug(name);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-organization`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: name.trim(), type, size }),
+      });
 
-      // Create organization
-      const { data: organization, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: name.trim(),
-          slug,
-        })
-        .select()
-        .single();
-
-      if (orgError) {
-        throw orgError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create organization');
       }
 
-      // Add user to organization
-      const { error: userOrgError } = await supabase
-        .from('user_organizations')
-        .insert({
-          user_id: user.id,
-          organization_id: organization.id,
-        });
-
-      if (userOrgError) {
-        throw userOrgError;
-      }
-
-      // Refresh user data
+      // Refresh user data to get the new organization
       await refreshUser();
 
     } catch (error) {
