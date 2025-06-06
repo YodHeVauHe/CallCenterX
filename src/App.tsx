@@ -8,11 +8,15 @@ import { EnvironmentCheck } from '@/components/environment-check';
 
 function App() {
   // Check if Supabase is configured
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
   const isSupabaseConfigured = !!(
-    import.meta.env.VITE_SUPABASE_URL && 
-    import.meta.env.VITE_SUPABASE_ANON_KEY &&
-    import.meta.env.VITE_SUPABASE_URL !== 'https://your-project-ref.supabase.co' &&
-    import.meta.env.VITE_SUPABASE_ANON_KEY !== 'your-anon-key-here'
+    supabaseUrl && 
+    supabaseKey &&
+    supabaseUrl !== 'https://your-project-ref.supabase.co' &&
+    supabaseKey !== 'your-anon-key-here' &&
+    supabaseUrl.includes('supabase.co')
   );
 
   if (!isSupabaseConfigured) {
