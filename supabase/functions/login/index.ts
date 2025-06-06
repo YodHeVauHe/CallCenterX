@@ -93,7 +93,7 @@ serve(async (req) => {
         email: data.user.email!,
         first_name: data.user.user_metadata?.first_name || null,
         last_name: data.user.user_metadata?.last_name || null,
-        role: 'member'
+        role: 'customer'
       }
 
       const { data: createdProfile, error: createError } = await supabase
