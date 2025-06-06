@@ -116,3 +116,5 @@ export function AppRoutes() {
     </Routes>
   );
 }
+
+export { AppRoutes }
