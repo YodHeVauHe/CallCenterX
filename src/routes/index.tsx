@@ -4,8 +4,8 @@ import { Layout } from '@/components/layout';
 import { Dashboard } from '@/pages/dashboard';
 import { Login } from '@/pages/auth/login';
 import { Register } from '@/pages/auth/register';
+import { SetupOrganization } from '@/pages/setup-organization';
 import { KnowledgeBase } from '@/pages/knowledge-base';
-import { AgentDashboard } from '@/pages/agent-dashboard';
 import { CallsPage } from '@/pages/calls';
 import { Settings } from '@/pages/settings';
 import { NotFound } from '@/pages/not-found';
@@ -14,29 +14,30 @@ import { CustomerInterface } from '@/pages/customer-interface';
 
 const ProtectedRoute = ({
   children,
-  roles = [],
+  requiresOrganization = true,
 }: {
   children: React.ReactNode;
-  roles?: string[];
+  requiresOrganization?: boolean;
 }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles.length > 0 && !roles.includes(user.role)) {
-    if (user.role === 'admin') {
-      return <Navigate to="/dashboard\" replace />;
-    } else if (user.role === 'agent') {
-      return <Navigate to="/agent-dashboard" replace />;
-    } else {
-      return <Navigate to="/customer\" replace />;
-    }
+  if (requiresOrganization && !user.hasOrganization) {
+    return <Navigate to="/setup-organization" replace />;
   }
 
   return <>{children}</>;
@@ -48,6 +49,15 @@ export function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/customer" element={<CustomerInterface />} />
+      
+      <Route
+        path="/setup-organization"
+        element={
+          <ProtectedRoute requiresOrganization={false}>
+            <SetupOrganization />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected routes */}
       <Route
@@ -58,55 +68,12 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard\" replace />} />
-        <Route
-          path="dashboard"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="agent-dashboard"
-          element={
-            <ProtectedRoute roles={['agent']}>
-              <AgentDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="knowledge-base"
-          element={
-            <ProtectedRoute roles={['admin', 'agent']}>
-              <KnowledgeBase />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="calls"
-          element={
-            <ProtectedRoute roles={['admin', 'agent']}>
-              <CallsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="analytics"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <Analytics />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="settings"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="knowledge-base" element={<KnowledgeBase />} />
+        <Route path="calls" element={<CallsPage />} />
+        <Route path="analytics" element={<Analytics />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Catch-all route */}

@@ -24,10 +24,10 @@ export function RegisterForm({
 
     try {
       setIsLoading(true)
-      await register(email, password, name, "admin")
+      await register(email, password, name)
       toast({
         title: "Success",
-        description: "Your account has been created.",
+        description: "Your account has been created. Let's set up your organization!",
       })
     } catch (error) {
       toast({
@@ -49,11 +49,11 @@ export function RegisterForm({
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Create an account</h1>
                 <p className="text-muted-foreground text-balance">
-                  Get started with CallCenterX
+                  Start your AI call center journey
                 </p>
               </div>
               <div className="grid gap-3">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
                   name="name"
@@ -68,7 +68,7 @@ export function RegisterForm({
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="john@company.com"
                   required
                   disabled={isLoading}
                 />
@@ -79,6 +79,7 @@ export function RegisterForm({
                   id="password"
                   name="password"
                   type="password"
+                  placeholder="Create a strong password"
                   required
                   disabled={isLoading}
                 />
@@ -97,7 +98,7 @@ export function RegisterForm({
         </CardContent>
       </Card>
       <div className="text-muted-foreground text-center text-xs text-balance">
-        By clicking continue, you agree to our{" "}
+        By creating an account, you agree to our{" "}
         <a href="#" className="underline underline-offset-4 hover:text-primary">Terms of Service</a>{" "}
         and{" "}
         <a href="#" className="underline underline-offset-4 hover:text-primary">Privacy Policy</a>.

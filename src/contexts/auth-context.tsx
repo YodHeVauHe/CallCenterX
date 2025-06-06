@@ -1,19 +1,14 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
-import { User, UserRole } from '@/types/user';
+import { User } from '@/types/user';
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (
-    email: string,
-    password: string,
-    name: string,
-    role: UserRole
-  ) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Fetch user profile from database
           const { data: profile } = await supabase
             .from('profiles')
-            .select('*')
+            .select('*, organizations(*)')
             .eq('id', session.user.id)
             .single();
 
@@ -52,9 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: session.user.id,
               email: session.user.email!,
               name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-              role: profile.role,
               avatar: session.user.user_metadata?.avatar_url,
-              companyId: profile.organization_id,
+              organizationId: profile.organization_id,
+              hasOrganization: !!profile.organization_id,
             };
             setUser(userData);
           }
@@ -77,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Fetch user profile from database
           const { data: profile } = await supabase
             .from('profiles')
-            .select('*')
+            .select('*, organizations(*)')
             .eq('id', session.user.id)
             .single();
 
@@ -86,9 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: session.user.id,
               email: session.user.email!,
               name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-              role: profile.role,
               avatar: session.user.user_metadata?.avatar_url,
-              companyId: profile.organization_id,
+              organizationId: profile.organization_id,
+              hasOrganization: !!profile.organization_id,
             };
             setUser(userData);
           }
@@ -103,39 +98,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       
-      // Call the login Edge Function
-      const response = await fetch(`${supabaseUrl}/functions/v1/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      // Set the session in the client
-      const { error } = await supabase.auth.setSession(data.session);
-      
       if (error) {
         throw error;
       }
 
-      // Set user data
-      setUser(data.user);
-      
-      // Redirect based on role
-      if (data.user.role === 'admin') {
+      // The auth state change listener will handle setting the user
+      // Redirect based on whether user has an organization
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profile?.organization_id) {
         navigate('/dashboard');
-      } else if (data.user.role === 'agent') {
-        navigate('/agent-dashboard');
       } else {
-        navigate('/customer');
+        navigate('/setup-organization');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -155,54 +138,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (
-    email: string,
-    password: string,
-    name: string,
-    role: UserRole
-  ) => {
+  const register = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
       
-      // Call the register Edge Function
-      const response = await fetch(`${supabaseUrl}/functions/v1/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({ email, password, name, role }),
+      // Split name into first and last name
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          }
+        }
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+      if (error) {
+        throw error;
       }
 
-      // Set the session in the client if one was returned
-      if (data.session) {
-        const { error } = await supabase.auth.setSession(data.session);
-        
-        if (error) {
-          throw error;
-        }
-
-        // Set user data
-        setUser(data.user);
-        
-        // Redirect based on role
-        if (data.user.role === 'admin') {
-          navigate('/dashboard');
-        } else if (data.user.role === 'agent') {
-          navigate('/agent-dashboard');
-        } else {
-          navigate('/customer');
-        }
-      } else {
-        // If no session (email confirmation required), redirect to login
-        navigate('/login');
+      // If email confirmation is required, show message
+      if (!data.session) {
+        throw new Error('Please check your email to confirm your account before signing in.');
       }
+
+      // If user is immediately signed in, redirect to organization setup
+      navigate('/setup-organization');
     } catch (error) {
       console.error('Registration error:', error);
       throw error;

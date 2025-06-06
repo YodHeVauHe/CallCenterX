@@ -7,12 +7,9 @@ import {
   BarChart2,
   FileText,
   Home,
-  Layers,
   Phone,
   Settings,
-  Users,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
 
 interface SidebarProps {
   open: boolean;
@@ -20,27 +17,13 @@ interface SidebarProps {
 
 export function Sidebar({ open }: SidebarProps) {
   const { pathname } = useLocation();
-  const { user } = useAuth();
-
-  // Only show relevant nav items based on user role
-  const isAdmin = user?.role === 'admin';
 
   const navItems = [
-    ...(isAdmin
-      ? [
-          {
-            name: 'Dashboard',
-            href: '/dashboard',
-            icon: Home,
-          },
-        ]
-      : [
-          {
-            name: 'Agent Dashboard',
-            href: '/agent-dashboard',
-            icon: Home,
-          },
-        ]),
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: Home,
+    },
     {
       name: 'Calls',
       href: '/calls',
@@ -51,20 +34,16 @@ export function Sidebar({ open }: SidebarProps) {
       href: '/knowledge-base',
       icon: FileText,
     },
-    ...(isAdmin
-      ? [
-          {
-            name: 'Analytics',
-            href: '/analytics',
-            icon: BarChart2,
-          },
-          {
-            name: 'Settings',
-            href: '/settings',
-            icon: Settings,
-          },
-        ]
-      : []),
+    {
+      name: 'Analytics',
+      href: '/analytics',
+      icon: BarChart2,
+    },
+    {
+      name: 'Settings',
+      href: '/settings',
+      icon: Settings,
+    },
   ];
 
   if (!open) {

@@ -1,10 +1,16 @@
-export type UserRole = 'admin' | 'agent' | 'customer';
-
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
   avatar?: string;
-  companyId?: string;
+  organizationId?: string;
+  hasOrganization: boolean;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
 }
