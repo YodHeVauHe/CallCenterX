@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,11 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { Building2, Users, GraduationCap, Rocket, Briefcase, Building } from 'lucide-react';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 const organizationTypes = [
   {
@@ -63,7 +57,7 @@ export function SetupOrganization() {
   const [organizationType, setOrganizationType] = useState('');
   const [companySize, setCompanySize] = useState('');
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const generateSlug = (name: string) => {
     return name
@@ -98,60 +92,25 @@ export function SetupOrganization() {
     try {
       setIsLoading(true);
 
-      // Generate a unique slug
-      const baseSlug = generateSlug(organizationName);
-      let slug = baseSlug;
-      let counter = 1;
+      // Mock organization creation - in production this would be Supabase
+      const newOrganization = {
+        id: Date.now().toString(),
+        name: organizationName.trim(),
+        slug: generateSlug(organizationName),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-      // Check if slug exists and make it unique
-      while (true) {
-        const { data: existing } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('slug', slug)
-          .single();
-
-        if (!existing) break;
+      // Update user with new organization
+      if (user) {
+        const updatedUser = {
+          ...user,
+          organizations: [...user.organizations, newOrganization],
+        };
         
-        slug = `${baseSlug}-${counter}`;
-        counter++;
+        localStorage.setItem('mock_user', JSON.stringify(updatedUser));
+        await refreshUser();
       }
-
-      // Create organization
-      const { data: organization, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: organizationName.trim(),
-          slug: slug,
-        })
-        .select()
-        .single();
-
-      if (orgError) {
-        throw orgError;
-      }
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      // Add user to organization via user_organizations table
-      const { error: userOrgError } = await supabase
-        .from('user_organizations')
-        .insert({
-          user_id: user.id,
-          organization_id: organization.id,
-        });
-
-      if (userOrgError) {
-        throw userOrgError;
-      }
-
-      // Refresh user data to include new organization
-      await refreshUser();
 
       toast({
         title: 'Success!',
