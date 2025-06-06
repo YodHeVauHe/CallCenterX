@@ -4,6 +4,7 @@ import { Layout } from '@/components/layout';
 import { Dashboard } from '@/pages/dashboard';
 import { Login } from '@/pages/auth/login';
 import { Register } from '@/pages/auth/register';
+import { OAuthCallback } from '@/pages/oauth/callback';
 import { KnowledgeBase } from '@/pages/knowledge-base';
 import { AgentDashboard } from '@/pages/agent-dashboard';
 import { CallsPage } from '@/pages/calls';
@@ -22,7 +23,11 @@ const ProtectedRoute = ({
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -31,11 +36,11 @@ const ProtectedRoute = ({
 
   if (roles.length > 0 && !roles.includes(user.role)) {
     if (user.role === 'admin') {
-      return <Navigate to="/dashboard\" replace />;
+      return <Navigate to="/dashboard" replace />;
     } else if (user.role === 'agent') {
       return <Navigate to="/agent-dashboard" replace />;
     } else {
-      return <Navigate to="/customer\" replace />;
+      return <Navigate to="/customer" replace />;
     }
   }
 
@@ -47,6 +52,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
       <Route path="/customer" element={<CustomerInterface />} />
 
       {/* Protected routes */}
@@ -58,7 +64,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard\" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route
           path="dashboard"
           element={
