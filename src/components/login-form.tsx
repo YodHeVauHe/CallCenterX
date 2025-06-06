@@ -29,9 +29,13 @@ export function LoginForm({
         description: "You have successfully logged in.",
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Invalid email or password."
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Invalid email or password.",
+        description: errorMessage === "Email not confirmed" 
+          ? "Your email address has not been confirmed. Please check your inbox for a verification link."
+          : errorMessage,
         variant: "destructive",
       })
     } finally {
