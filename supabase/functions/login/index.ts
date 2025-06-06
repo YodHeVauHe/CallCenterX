@@ -78,13 +78,43 @@ serve(async (req) => {
     }
 
     // Get user profile from the profiles table
-    const { data: profile, error: profileError } = await supabase
+    let { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)
       .single()
 
-    if (profileError) {
+    // If profile doesn't exist, create one
+    if (profileError && profileError.code === 'PGRST116') {
+      console.log('Profile not found, creating new profile for user:', data.user.id)
+      
+      const newProfile = {
+        id: data.user.id,
+        email: data.user.email!,
+        first_name: data.user.user_metadata?.first_name || null,
+        last_name: data.user.user_metadata?.last_name || null,
+        role: 'member'
+      }
+
+      const { data: createdProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert(newProfile)
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Profile creation error:', createError)
+        return new Response(
+          JSON.stringify({ error: 'Failed to create user profile' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      profile = createdProfile
+    } else if (profileError) {
       console.error('Profile fetch error:', profileError)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch user profile' }),
