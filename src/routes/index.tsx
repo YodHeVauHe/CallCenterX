@@ -36,11 +36,11 @@ const ProtectedRoute = ({
 
   if (roles.length > 0 && !roles.includes(user.role)) {
     if (user.role === 'admin') {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/dashboard\" replace />;
     } else if (user.role === 'agent') {
       return <Navigate to="/agent-dashboard" replace />;
     } else {
-      return <Navigate to="/customer" replace />;
+      return <Navigate to="/customer\" replace />;
     }
   }
 
@@ -64,7 +64,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<Navigate to="/dashboard\" replace />} />
         <Route
           path="dashboard"
           element={
