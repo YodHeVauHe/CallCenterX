@@ -11,6 +11,7 @@ import { Settings } from '@/pages/settings';
 import { NotFound } from '@/pages/not-found';
 import { Analytics } from '@/pages/analytics';
 import { CustomerInterface } from '@/pages/customer-interface';
+import { OAuthCallback } from '@/pages/auth/oauth-callback';
 
 const ProtectedRoute = ({
   children,
@@ -47,6 +48,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
       <Route path="/customer" element={<CustomerInterface />} />
 
       {/* Protected routes */}
