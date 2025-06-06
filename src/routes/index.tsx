@@ -4,7 +4,6 @@ import { Layout } from '@/components/layout';
 import { Dashboard } from '@/pages/dashboard';
 import { Login } from '@/pages/auth/login';
 import { Register } from '@/pages/auth/register';
-import { OAuthCallback } from '@/pages/oauth/callback';
 import { KnowledgeBase } from '@/pages/knowledge-base';
 import { AgentDashboard } from '@/pages/agent-dashboard';
 import { CallsPage } from '@/pages/calls';
@@ -23,11 +22,7 @@ const ProtectedRoute = ({
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   if (!user) {
@@ -52,7 +47,6 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/oauth/callback" element={<OAuthCallback />} />
       <Route path="/customer" element={<CustomerInterface />} />
 
       {/* Protected routes */}

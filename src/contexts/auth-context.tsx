@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, UserRole } from '@/types/user';
-import { AuthService } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
 
 type AuthContextType = {
   user: User | null;
@@ -15,7 +13,6 @@ type AuthContextType = {
     name: string,
     role: UserRole
   ) => Promise<void>;
-  signInWithGoogle: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,60 +23,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for existing session
-    const initializeAuth = async () => {
-      try {
-        const currentUser = await AuthService.getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          const user: User = {
-            id: session.user.id,
-            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-            email: session.user.email || '',
-            role: session.user.user_metadata?.role || 'agent',
-            avatar: session.user.user_metadata?.avatar_url,
-            companyId: '1',
-          };
-          setUser(user);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    // Check if user is already logged in
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { user, error } = await AuthService.signInWithEmail(email, password);
+      // This would be a call to Supabase in production
+      // Mocked for now
+      const mockUser: User = {
+        id: '1',
+        name: 'Demo User',
+        email,
+        role: 'admin',
+        avatar: 'https://i.pravatar.cc/150?img=68',
+        companyId: '1',
+      };
       
-      if (error) {
-        throw new Error(error);
-      }
-
-      if (user) {
-        setUser(user);
-        
-        // Redirect based on role
-        if (user.role === 'admin') {
-          navigate('/dashboard');
-        } else if (user.role === 'agent') {
-          navigate('/agent-dashboard');
-        }
+      setUser(mockUser);
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      
+      // Redirect based on role
+      if (mockUser.role === 'admin') {
+        navigate('/dashboard');
+      } else if (mockUser.role === 'agent') {
+        navigate('/agent-dashboard');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -89,14 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = async () => {
-    try {
-      await AuthService.signOut();
-      setUser(null);
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+    navigate('/login');
   };
 
   const register = async (
@@ -107,22 +76,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       setLoading(true);
-      const { user, error } = await AuthService.signUpWithEmail(email, password, name, role);
+      // This would be a call to Supabase in production
+      // Mocked for now
+      const mockUser: User = {
+        id: '1',
+        name,
+        email,
+        role,
+        avatar: 'https://i.pravatar.cc/150?img=68',
+        companyId: '1',
+      };
       
-      if (error) {
-        throw new Error(error);
-      }
-
-      if (user) {
-        setUser(user);
-        
-        // Redirect based on role
-        if (user.role === 'admin') {
-          navigate('/dashboard');
-        } else if (user.role === 'agent') {
-          navigate('/agent-dashboard');
-        }
-      }
+      setUser(mockUser);
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      navigate('/dashboard');
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -131,20 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogle = () => {
-    const authUrl = AuthService.getGoogleAuthUrl();
-    window.location.href = authUrl;
-  };
-
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      login, 
-      logout, 
-      register, 
-      signInWithGoogle 
-    }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );

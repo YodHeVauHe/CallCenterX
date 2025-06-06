@@ -14,9 +14,8 @@ export function RegisterForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const { register, signInWithGoogle } = useAuth()
+  const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [role, setRole] = useState<UserRole>("admin")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -36,25 +35,11 @@ export function RegisterForm({
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       })
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleGoogleSignIn = () => {
-    try {
-      setIsGoogleLoading(true)
-      signInWithGoogle()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to initiate Google sign-in.",
-        variant: "destructive",
-      })
-      setIsGoogleLoading(false)
     }
   }
 
@@ -77,7 +62,7 @@ export function RegisterForm({
                   name="name"
                   placeholder="John Doe"
                   required
-                  disabled={isLoading || isGoogleLoading}
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-3">
@@ -88,7 +73,7 @@ export function RegisterForm({
                   type="email"
                   placeholder="m@example.com"
                   required
-                  disabled={isLoading || isGoogleLoading}
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-3">
@@ -98,7 +83,7 @@ export function RegisterForm({
                   name="password"
                   type="password"
                   required
-                  disabled={isLoading || isGoogleLoading}
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-3">
@@ -106,7 +91,7 @@ export function RegisterForm({
                 <Select
                   value={role}
                   onValueChange={(value) => setRole(value as UserRole)}
-                  disabled={isLoading || isGoogleLoading}
+                  disabled={isLoading}
                 >
                   <SelectTrigger id="role">
                     <SelectValue placeholder="Select a role" />
@@ -117,7 +102,7 @@ export function RegisterForm({
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating account..." : "Create Account"}
               </Button>
               <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
@@ -126,23 +111,13 @@ export function RegisterForm({
                 </span>
               </div>
               <div className="flex justify-center">
-                <Button 
-                  variant="outline" 
-                  type="button" 
-                  className="w-full"
-                  onClick={handleGoogleSignIn}
-                  disabled={isLoading || isGoogleLoading}
-                >
-                  {isGoogleLoading ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg\" viewBox="0 0 24 24\" className="h-5 w-5">
-                      <path
-                        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  )}
+                <Button variant="outline" type="button" className="w-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5">
+                    <path
+                      d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+                      fill="currentColor"
+                    />
+                  </svg>
                   <span className="sr-only">Sign up with Google</span>
                 </Button>
               </div>
