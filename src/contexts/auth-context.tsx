@@ -207,6 +207,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       
+      console.log('Login successful, user:', data.user);
+      
+      // Don't set loading to false here - let the auth state change handler do it
+      // The onAuthStateChange will trigger and load the user profile
+      
       return { user: data.user, error: null };
     } catch (error) {
       console.error('Login error:', error);

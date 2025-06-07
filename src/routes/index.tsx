@@ -14,6 +14,47 @@ import { CustomerInterface } from '@/pages/customer-interface';
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+const AuthRedirect = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!loading && user) {
+      console.log('User authenticated, redirecting...', user);
+      
+      // If user has organizations, go to dashboard
+      if (user.organizations.length > 0) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        // If no organizations, go to setup
+        navigate('/setup-organization', { replace: true });
+      }
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
+          <div className="space-y-2">
+            <p className="text-lg font-medium">Loading CallCenterX...</p>
+            <p className="text-sm text-muted-foreground">Connecting to your workspace</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If we get here and user is null, redirect to login
+  if (!user) {
+    navigate('/login', { replace: true });
+  }
+
+  return null;
+};
+
 const ProtectedRoute = ({
   children,
   requiresOrganization = true,
@@ -22,21 +63,6 @@ const ProtectedRoute = ({
   requiresOrganization?: boolean;
 }) => {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    if (!loading && user) {
-      // If user has no organizations and we're not already on setup page
-      if (requiresOrganization && user.organizations.length === 0 && location.pathname !== '/setup-organization') {
-        navigate('/setup-organization', { replace: true });
-      }
-      // If user has organizations and we're on setup page, redirect to dashboard
-      else if (user.organizations.length > 0 && location.pathname === '/setup-organization') {
-        navigate('/dashboard', { replace: true });
-      }
-    }
-  }, [user, loading, requiresOrganization, navigate, location.pathname]);
 
   if (loading) {
     return (
@@ -57,7 +83,7 @@ const ProtectedRoute = ({
   }
 
   if (requiresOrganization && user.organizations.length === 0) {
-    return <Navigate to="/setup-organization\" replace />;
+    return <Navigate to="/setup-organization" replace />;
   }
 
   return <>{children}</>;
@@ -66,8 +92,8 @@ const ProtectedRoute = ({
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<LoginWithRedirect />} />
+      <Route path="/register" element={<RegisterWithRedirect />} />
       <Route path="/customer" element={<CustomerInterface />} />
       
       <Route
@@ -88,7 +114,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard\" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="knowledge-base" element={<KnowledgeBase />} />
         <Route path="calls" element={<CallsPage />} />
@@ -100,4 +126,25 @@ export function AppRoutes() {
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
+}
+
+// Wrapper components that handle authentication redirects
+function LoginWithRedirect() {
+  const { user, loading } = useAuth();
+  
+  if (!loading && user) {
+    return <AuthRedirect />;
+  }
+  
+  return <Login />;
+}
+
+function RegisterWithRedirect() {
+  const { user, loading } = useAuth();
+  
+  if (!loading && user) {
+    return <AuthRedirect />;
+  }
+  
+  return <Register />;
 }
