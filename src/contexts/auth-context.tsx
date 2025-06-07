@@ -34,16 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Get initial session with timeout
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 10000)
-        );
-
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
+        // Get initial session with shorter timeout
+        const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
           console.error('Session error:', error);
@@ -94,21 +86,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Loading user profile for:', supabaseUser.id);
 
-      // Get user profile with timeout
-      const profilePromise = supabase
+      // Get user profile with shorter timeout and better error handling
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
         .single();
-
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile load timeout')), 15000)
-      );
-
-      const { data: profile, error: profileError } = await Promise.race([
-        profilePromise,
-        timeoutPromise
-      ]) as any;
 
       if (profileError) {
         console.error('Error loading profile:', profileError);
@@ -129,8 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Profile loaded:', profile);
 
-      // Get user organizations with timeout
-      const orgsPromise = supabase
+      // Get user organizations with better error handling
+      const { data: userOrgs, error: orgsError } = await supabase
         .from('user_organizations')
         .select(`
           organization_id,
@@ -143,13 +126,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           )
         `)
         .eq('user_id', supabaseUser.id);
-
-      const { data: userOrgs, error: orgsError } = await Promise.race([
-        orgsPromise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Organizations load timeout')), 15000)
-        )
-      ]) as any;
 
       if (orgsError) {
         console.error('Error loading organizations:', orgsError);
@@ -251,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/setup-organization`,
           data: {
             first_name: firstName,
             last_name: lastName,

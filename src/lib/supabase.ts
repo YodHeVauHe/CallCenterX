@@ -22,17 +22,28 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'callcenterx-app'
+    }
+  },
+  db: {
+    schema: 'public'
   }
 })
 
-// Test the connection
-supabase.auth.getSession().then(({ data, error }) => {
-  if (error) {
-    console.error('Supabase connection error:', error);
-  } else {
-    console.log('Supabase connected successfully');
-  }
-}).catch(err => {
-  console.error('Failed to test Supabase connection:', err);
-});
+// Test the connection with better error handling
+supabase.auth.getSession()
+  .then(({ data, error }) => {
+    if (error) {
+      console.error('Supabase connection error:', error);
+    } else {
+      console.log('Supabase connected successfully');
+    }
+  })
+  .catch(err => {
+    console.error('Failed to test Supabase connection:', err);
+  });
