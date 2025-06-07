@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile load timeout')), 8000)
+        setTimeout(() => reject(new Error('Profile load timeout')), 15000)
       );
 
       const { data: profile, error: profileError } = await Promise.race([
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: userOrgs, error: orgsError } = await Promise.race([
         orgsPromise,
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Organizations load timeout')), 8000)
+          setTimeout(() => reject(new Error('Organizations load timeout')), 15000)
         )
       ]) as any;
 
