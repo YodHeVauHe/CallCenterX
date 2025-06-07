@@ -38,15 +38,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Test the connection
-supabase.auth.getSession()
-  .then(({ data, error }) => {
-    if (error) {
-      console.error('Supabase connection error:', error);
-    } else {
-      console.log('Supabase connected successfully', !!data.session);
-    }
-  })
-  .catch(err => {
-    console.error('Failed to test Supabase connection:', err);
-  });
+// Test the connection on initialization
+let connectionTested = false;
+
+if (!connectionTested) {
+  connectionTested = true;
+  supabase.auth.getSession()
+    .then(({ data, error }) => {
+      if (error) {
+        console.error('Supabase connection error:', error);
+      } else {
+        console.log('Supabase connected successfully', !!data.session);
+      }
+    })
+    .catch(err => {
+      console.error('Failed to test Supabase connection:', err);
+    });
+}
