@@ -167,16 +167,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error loading user data:', error);
       
-      // Fallback: create basic user object
-      const userData: User = {
-        id: supabaseUser.id,
-        name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
-        avatar: `https://i.pravatar.cc/150?u=${supabaseUser.email}`,
-        organizations: [],
-      };
-      
-      setUser(userData);
+      // Don't set user on error - let them try again or logout
+      console.log('Failed to load user profile, user will need to login again');
     } finally {
       setLoading(false);
     }
@@ -226,7 +218,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Logout error:', error);
       }
       setUser(null);
-      navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
     }

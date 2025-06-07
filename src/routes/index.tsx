@@ -35,7 +35,7 @@ const AuthPageWrapper = ({ children }: { children: React.ReactNode }) => {
     if (user.organizations.length === 0) {
       return <Navigate to="/setup-organization" replace />;
     } else {
-      return <Navigate to="/dashboard\" replace />;
+      return <Navigate to="/dashboard" replace />;
     }
   }
 
@@ -70,7 +70,7 @@ const ProtectedRoute = ({
   }
 
   if (requiresOrganization && user.organizations.length === 0) {
-    return <Navigate to="/setup-organization\" replace />;
+    return <Navigate to="/setup-organization" replace />;
   }
 
   return <>{children}</>;
@@ -115,9 +115,9 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard\" replace />} />
-        <Route path="dashboard\" element={<Dashboard />} />
-        <Route path="knowledge-base\" element={<KnowledgeBase />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="knowledge-base" element={<KnowledgeBase />} />
         <Route path="calls" element={<CallsPage />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
