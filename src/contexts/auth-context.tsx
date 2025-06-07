@@ -195,14 +195,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error('Login error:', error);
-        throw error;
+        // Provide more specific error messages
+        if (error.message === 'Invalid login credentials') {
+          throw new Error('The email or password you entered is incorrect. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and click the confirmation link before signing in.');
+        } else if (error.message.includes('Too many requests')) {
+          throw new Error('Too many login attempts. Please wait a few minutes before trying again.');
+        } else {
+          throw new Error(error.message || 'An error occurred during login. Please try again.');
+        }
       }
-
-      console.log('Login successful');
-
-      // The auth state change listener will handle loading the profile
-      // and navigation, so we don't need to do it here
+      
+      return { user: data.user, error: null };
     } catch (error) {
       console.error('Login error:', error);
       setLoading(false);

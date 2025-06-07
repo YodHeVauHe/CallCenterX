@@ -23,11 +23,21 @@ export function LoginForm({
 
     try {
       setIsLoading(true)
-      await login(email, password)
-      toast({
-        title: "Success",
-        description: "You have successfully logged in.",
-      })
+      const result = await login(email, password)
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          duration: 5000,
+          variant: "destructive",
+        })
+      } else if (result.user) {
+        toast({
+          title: "Success",
+          description: "Successfully logged in!",
+        })
+        // Navigation will be handled by the auth context
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Invalid email or password."
       

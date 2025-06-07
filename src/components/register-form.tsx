@@ -24,17 +24,19 @@ export function RegisterForm({
 
     try {
       setIsLoading(true)
-      await register(email, password, name)
-      toast({
-        title: "Success",
-        description: "Your account has been created. Let's set up your organization!",
-      })
+      const result = await register(values.email, values.password, values.firstName, values.lastName)
+      if (result.error) {
+        toast.error(result.error, {
+          duration: 5000,
+        })
+      } else if (result.user) {
+        toast.success('Account created successfully! Please check your email for verification if required.', {
+          duration: 7000,
+        })
+        // Navigation will be handled by the auth context
+      }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
-        variant: "destructive",
-      })
+      toast.error(error instanceof Error ? error.message : 'Registration failed')
     } finally {
       setIsLoading(false)
     }
@@ -87,11 +89,11 @@ export function RegisterForm({
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating account..." : "Create Account"}
               </Button>
-              <div className="text-center text-sm">
-                Already have an account?{" "}
-                <Link to="/login" className="underline underline-offset-4">
-                  Sign in
-                </Link>
+              <div className="mt-4 text-center text-sm text-muted-foreground">
+                <p>Already have an account?</p>
+                <Button variant="link" className="p-0 h-auto font-normal" onClick={() => navigate('/login')}>
+                  Sign in here
+                </Button>
               </div>
             </div>
           </form>
