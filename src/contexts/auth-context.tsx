@@ -117,6 +117,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Loaded user data:', userData);
       setUser(userData);
       setLoading(false);
+
+      // Handle navigation based on user state
+      const currentPath = window.location.pathname;
+      console.log('Current path:', currentPath);
+      
+      // Don't redirect if user is already on the right page
+      if (currentPath === '/login' || currentPath === '/register') {
+        if (userData.organizations.length === 0) {
+          navigate('/setup-organization', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      }
     } catch (error) {
       console.error('Error loading user profile:', error);
       setLoading(false);
