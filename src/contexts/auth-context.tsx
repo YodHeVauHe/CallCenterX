@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Organization } from '@/types/user';
+import { supabase } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 type AuthContextType = {
   user: User | null;
@@ -19,55 +21,109 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // For now, let's use mock authentication to get the app working
-    // This simulates checking for an existing session
-    const checkUser = async () => {
-      try {
-        // Check if user is stored in localStorage (mock session)
-        const storedUser = localStorage.getItem('mock_user');
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error('Error checking user session:', error);
-      } finally {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user);
+      } else {
         setLoading(false);
       }
-    };
+    });
 
-    checkUser();
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await loadUserProfile(session.user);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const loadUserProfile = async (supabaseUser: SupabaseUser) => {
+    try {
+      // Get user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        setLoading(false);
+        return;
+      }
+
+      // Get user organizations
+      const { data: userOrgs, error: orgsError } = await supabase
+        .from('user_organizations')
+        .select(`
+          organization_id,
+          organizations (
+            id,
+            name,
+            slug,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', supabaseUser.id);
+
+      if (orgsError) {
+        console.error('Error loading organizations:', orgsError);
+      }
+
+      const organizations: Organization[] = userOrgs?.map(uo => uo.organizations).filter(Boolean) || [];
+
+      const userData: User = {
+        id: profile.id,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+        email: profile.email,
+        avatar: `https://i.pravatar.cc/150?u=${profile.email}`,
+        organizations,
+      };
+
+      setUser(userData);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       
-      // Mock authentication - in production this would be Supabase
-      if (email && password) {
-        const mockUser: User = {
-          id: '1',
-          name: 'Demo User',
-          email,
-          avatar: 'https://i.pravatar.cc/150?img=68',
-          organizations: [
-            {
-              id: '1',
-              name: 'Demo Organization',
-              slug: 'demo-org',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          ],
-        };
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        await loadUserProfile(data.user);
         
-        setUser(mockUser);
-        localStorage.setItem('mock_user', JSON.stringify(mockUser));
-        
-        // Redirect to dashboard since user has organizations
-        navigate('/dashboard');
-      } else {
-        throw new Error('Invalid credentials');
+        // Navigate based on whether user has organizations
+        const { data: userOrgs } = await supabase
+          .from('user_organizations')
+          .select('organization_id')
+          .eq('user_id', data.user.id);
+
+        if (userOrgs && userOrgs.length > 0) {
+          navigate('/dashboard');
+        } else {
+          navigate('/setup-organization');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -79,8 +135,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+      }
       setUser(null);
-      localStorage.removeItem('mock_user');
       navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
@@ -91,23 +150,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       
-      // Mock registration - in production this would be Supabase
-      if (email && password && name) {
-        const mockUser: User = {
-          id: '1',
-          name,
-          email,
-          avatar: 'https://i.pravatar.cc/150?img=68',
-          organizations: [], // New users start with no organizations
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem('mock_user', JSON.stringify(mockUser));
-        
-        // Redirect to organization setup since user has no organizations
+      const [firstName, ...lastNameParts] = name.trim().split(' ');
+      const lastName = lastNameParts.join(' ');
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        // User will be automatically logged in after email confirmation
+        // For now, redirect to setup organization
         navigate('/setup-organization');
-      } else {
-        throw new Error('All fields are required');
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -119,11 +183,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      // Mock refresh - in production this would fetch from Supabase
-      const storedUser = localStorage.getItem('mock_user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        setUser(userData);
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      if (supabaseUser) {
+        await loadUserProfile(supabaseUser);
       }
     } catch (error) {
       console.error('Error refreshing user:', error);

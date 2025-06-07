@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { supabase } from '@/lib/supabase';
 import { Building2, Users, GraduationCap, Rocket, Briefcase, Building } from 'lucide-react';
 
 const organizationTypes = [
@@ -89,28 +90,48 @@ export function SetupOrganization() {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to create an organization.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
 
-      // Mock organization creation - in production this would be Supabase
-      const newOrganization = {
-        id: Date.now().toString(),
-        name: organizationName.trim(),
-        slug: generateSlug(organizationName),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      const slug = generateSlug(organizationName);
 
-      // Update user with new organization
-      if (user) {
-        const updatedUser = {
-          ...user,
-          organizations: [...user.organizations, newOrganization],
-        };
-        
-        localStorage.setItem('mock_user', JSON.stringify(updatedUser));
-        await refreshUser();
+      // Create organization
+      const { data: organization, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: organizationName.trim(),
+          slug,
+        })
+        .select()
+        .single();
+
+      if (orgError) {
+        throw orgError;
       }
+
+      // Add user to organization
+      const { error: memberError } = await supabase
+        .from('user_organizations')
+        .insert({
+          user_id: user.id,
+          organization_id: organization.id,
+        });
+
+      if (memberError) {
+        throw memberError;
+      }
+
+      // Refresh user data to include new organization
+      await refreshUser();
 
       toast({
         title: 'Success!',
