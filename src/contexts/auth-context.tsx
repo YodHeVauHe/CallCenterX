@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Organization } from '@/types/user';
+import { supabase } from '@/lib/supabase';
 
 type AuthContextType = {
   user: User | null;
@@ -15,76 +17,148 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // For now, let's use mock authentication to get the app working
-    // This simulates checking for an existing session
-    const checkUser = async () => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
       try {
-        console.log('Checking for existing user session...');
+        console.log('Initializing Supabase auth...');
         
-        // Check if user is stored in localStorage (mock session)
-        const storedUser = localStorage.getItem('mock_user');
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          console.log('Found stored user:', userData);
-          setUser(userData);
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          if (mounted) setLoading(false);
+          return;
+        }
+
+        if (session?.user && mounted) {
+          console.log('Found existing session for user:', session.user.email);
+          await loadUserProfile(session.user.id);
         } else {
-          console.log('No stored user found');
+          console.log('No existing session found');
+          if (mounted) setLoading(false);
         }
       } catch (error) {
-        console.error('Error checking user session:', error);
-      } finally {
-        console.log('Setting loading to false');
-        setLoading(false);
+        console.error('Error initializing auth:', error);
+        if (mounted) setLoading(false);
       }
     };
 
-    checkUser();
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
+      if (event === 'SIGNED_IN' && session?.user && mounted) {
+        await loadUserProfile(session.user.id);
+      } else if (event === 'SIGNED_OUT' && mounted) {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      console.log('Loading user profile for:', userId);
+      
+      // Get user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError);
+        setLoading(false);
+        return;
+      }
+
+      // Get user organizations
+      const { data: userOrgs, error: orgsError } = await supabase
+        .from('user_organizations')
+        .select(`
+          organization_id,
+          organizations (
+            id,
+            name,
+            slug,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (orgsError) {
+        console.error('Error loading organizations:', orgsError);
+      }
+
+      const organizations: Organization[] = userOrgs?.map(uo => uo.organizations).filter(Boolean) || [];
+
+      const userData: User = {
+        id: profile.id,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+        email: profile.email,
+        avatar: `https://i.pravatar.cc/150?u=${profile.email}`,
+        organizations,
+      };
+
+      console.log('Loaded user data:', userData);
+      setUser(userData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      setLoading(false);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       console.log('Attempting login for:', email);
       
-      // Mock authentication - in production this would be Supabase
-      if (email && password) {
-        const mockUser: User = {
-          id: '1',
-          name: 'Demo User',
-          email,
-          avatar: 'https://i.pravatar.cc/150?img=68',
-          organizations: [
-            {
-              id: '1',
-              name: 'Demo Organization',
-              slug: 'demo-org',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          ],
-        };
-        
-        console.log('Login successful, setting user:', mockUser);
-        setUser(mockUser);
-        localStorage.setItem('mock_user', JSON.stringify(mockUser));
-      } else {
-        throw new Error('Invalid credentials');
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
+
+      if (data.user) {
+        console.log('Login successful for:', data.user.email);
+        // User profile will be loaded by the auth state change listener
       }
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
-    } finally {
       setLoading(false);
+      throw error;
     }
   };
 
   const logout = async () => {
     try {
       console.log('Logging out...');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+        throw error;
+      }
       setUser(null);
-      localStorage.removeItem('mock_user');
+      navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -95,46 +169,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       console.log('Attempting registration for:', email);
       
-      // Mock registration - in production this would be Supabase
-      if (email && password && name) {
-        const mockUser: User = {
-          id: '1',
-          name,
-          email,
-          avatar: 'https://i.pravatar.cc/150?img=68',
-          organizations: [], // New users start with no organizations
-        };
-        
-        console.log('Registration successful, setting user:', mockUser);
-        setUser(mockUser);
-        localStorage.setItem('mock_user', JSON.stringify(mockUser));
-      } else {
-        throw new Error('All fields are required');
+      const [firstName, ...lastNameParts] = name.split(' ');
+      const lastName = lastNameParts.join(' ');
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
+
+      if (data.user) {
+        console.log('Registration successful for:', data.user.email);
+        // User profile will be loaded by the auth state change listener
       }
     } catch (error) {
       console.error('Registration error:', error);
-      throw error;
-    } finally {
       setLoading(false);
+      throw error;
     }
   };
 
   const refreshUser = async () => {
     try {
       console.log('Refreshing user...');
-      // Mock refresh - in production this would fetch from Supabase
-      const storedUser = localStorage.getItem('mock_user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        console.log('Refreshed user data:', userData);
-        setUser(userData);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (authUser) {
+        await loadUserProfile(authUser.id);
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
     }
   };
 
-  console.log('Auth context state:', { user: !!user, loading });
+  console.log('Auth context state:', { user: !!user, loading, userEmail: user?.email });
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, register, refreshUser }}>
