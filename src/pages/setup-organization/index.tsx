@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase';
-import { Building2, Users, GraduationCap, Rocket, Briefcase, Building } from 'lucide-react';
+import { Building2, Users, GraduationCap, Rocket, Briefcase, Building, ExternalLink } from 'lucide-react';
 
 const organizationTypes = [
   {
@@ -52,11 +51,18 @@ const companySizes = [
   { value: '500+', label: '500+ people' },
 ];
 
+const plans = [
+  { value: 'free', label: 'Free - $0/month', description: 'Perfect for getting started' },
+  { value: 'pro', label: 'Pro - $25/month', description: 'For growing teams' },
+  { value: 'enterprise', label: 'Enterprise - Custom', description: 'For large organizations' },
+];
+
 export function SetupOrganization() {
   const [isLoading, setIsLoading] = useState(false);
   const [organizationName, setOrganizationName] = useState('');
   const [organizationType, setOrganizationType] = useState('');
   const [companySize, setCompanySize] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('free');
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
 
@@ -153,103 +159,133 @@ export function SetupOrganization() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <Card className="border-0 shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-          <CardHeader className="text-center pb-8 pt-12">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
-              <Building2 className="h-8 w-8 text-white" />
-            </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6">
+      <div className="w-full max-w-lg">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-8">
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-white mb-2">
               Create a new organization
-            </CardTitle>
-            <CardDescription className="text-lg text-slate-600 dark:text-slate-400 mt-3">
-              This is your organization within CallCenterX.
-              <br />
-              For example, you can use the name of your company or department.
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="px-12 pb-12">
-            <form onSubmit={onSubmit} className="space-y-8">
-              <div className="space-y-3">
-                <Label htmlFor="organizationName" className="text-base font-medium text-slate-700 dark:text-slate-300">
-                  Name
-                </Label>
-                <Input
-                  id="organizationName"
-                  value={organizationName}
-                  onChange={(e) => setOrganizationName(e.target.value)}
-                  placeholder="What's the name of your company or team?"
-                  required
-                  disabled={isLoading}
-                  className="h-14 text-lg border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-slate-800"
-                />
-              </div>
+            </h1>
+            <div className="text-gray-400 space-y-1">
+              <p>This is your organization within CallCenterX.</p>
+              <p>For example, you can use the name of your company or department.</p>
+            </div>
+          </div>
 
-              <div className="space-y-3">
-                <Label className="text-base font-medium text-slate-700 dark:text-slate-300">
-                  Type
-                </Label>
-                <Select value={organizationType} onValueChange={setOrganizationType} disabled={isLoading}>
-                  <SelectTrigger className="h-14 text-lg border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-slate-800">
-                    <SelectValue placeholder="What would best describe your organization?" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    {organizationTypes.map((type) => {
-                      const IconComponent = type.icon;
-                      return (
-                        <SelectItem 
-                          key={type.value} 
-                          value={type.value}
-                          className="py-4 px-4 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-slate-50 dark:focus:bg-slate-700"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
-                              <IconComponent className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-slate-900 dark:text-white">{type.label}</span>
-                              <span className="text-sm text-slate-500 dark:text-slate-400">{type.description}</span>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+          <form onSubmit={onSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="organizationName" className="text-white font-medium">
+                Name
+              </Label>
+              <Input
+                id="organizationName"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                placeholder="What's the name of your company or team?"
+                required
+                disabled={isLoading}
+                className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-green-500 focus:ring-green-500"
+              />
+            </div>
 
-              <div className="space-y-3">
-                <Label className="text-base font-medium text-slate-700 dark:text-slate-300">
-                  Company size
-                </Label>
-                <Select value={companySize} onValueChange={setCompanySize} disabled={isLoading}>
-                  <SelectTrigger className="h-14 text-lg border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-slate-800">
-                    <SelectValue placeholder="How many people are in your company?" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    {companySizes.map((size) => (
+            <div className="space-y-2">
+              <Label className="text-white font-medium">
+                Type
+              </Label>
+              <Select value={organizationType} onValueChange={setOrganizationType} disabled={isLoading}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+                  <SelectValue placeholder="What would best describe your organization?" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  {organizationTypes.map((type) => {
+                    const IconComponent = type.icon;
+                    return (
                       <SelectItem 
-                        key={size.value} 
-                        value={size.value}
-                        className="py-3 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-slate-50 dark:focus:bg-slate-700"
+                        key={type.value} 
+                        value={type.value}
+                        className="text-white hover:bg-gray-600 focus:bg-gray-600"
                       >
-                        {size.label}
+                        <div className="flex items-center space-x-3">
+                          <IconComponent className="h-4 w-4" />
+                          <span>{type.label}</span>
+                        </div>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-400">What would best describe your organization?</p>
+            </div>
 
-              <div className="pt-6 flex items-center justify-between">
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  You can rename your organization later
-                </div>
+            <div className="space-y-2">
+              <Label className="text-white font-medium">
+                Company size
+              </Label>
+              <Select value={companySize} onValueChange={setCompanySize} disabled={isLoading}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+                  <SelectValue placeholder="How many people are in your company?" />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  {companySizes.map((size) => (
+                    <SelectItem 
+                      key={size.value} 
+                      value={size.value}
+                      className="text-white hover:bg-gray-600 focus:bg-gray-600"
+                    >
+                      {size.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-400">How many people are in your company?</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Label className="text-white font-medium">
+                  Plan
+                </Label>
+                <Label className="text-white font-medium">
+                  Pricing
+                </Label>
+                <ExternalLink className="h-4 w-4 text-gray-400" />
+              </div>
+              <Select value={selectedPlan} onValueChange={setSelectedPlan} disabled={isLoading}>
+                <SelectTrigger className="bg-gray-700 border-gray-600 text-white focus:border-green-500 focus:ring-green-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-700 border-gray-600">
+                  {plans.map((plan) => (
+                    <SelectItem 
+                      key={plan.value} 
+                      value={plan.value}
+                      className="text-white hover:bg-gray-600 focus:bg-gray-600"
+                    >
+                      {plan.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-400">The Plan applies to your new organization.</p>
+            </div>
+
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-gray-400">
+                You can rename your organization later
+              </div>
+              <div className="flex space-x-3">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  className="bg-transparent border-gray-600 text-gray-300 hover:bg-gray-700"
+                  onClick={() => navigate('/login')}
+                >
+                  Cancel
+                </Button>
                 <Button 
                   type="submit" 
                   disabled={isLoading || !organizationName.trim() || !organizationType}
-                  className="h-12 px-8 text-base font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="bg-green-600 hover:bg-green-700 text-white border-0"
                 >
                   {isLoading ? (
                     <>
@@ -261,9 +297,9 @@ export function SetupOrganization() {
                   )}
                 </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
