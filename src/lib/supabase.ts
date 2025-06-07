@@ -9,12 +9,7 @@ console.log('Supabase config:', {
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables:', {
-    VITE_SUPABASE_URL: supabaseUrl,
-    VITE_SUPABASE_ANON_KEY: supabaseAnonKey ? '[HIDDEN]' : 'undefined'
-  });
-  
-  // For development, we'll create a mock client to prevent crashes
+  console.error('Missing Supabase environment variables. Please check your .env file.');
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
@@ -23,7 +18,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce',
+    storage: window.localStorage,
+    storageKey: 'callcenterx-auth-token',
+    debug: import.meta.env.DEV
   },
   global: {
     headers: {
@@ -32,16 +30,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   db: {
     schema: 'public'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 })
 
-// Test the connection with better error handling
+// Test the connection
 supabase.auth.getSession()
   .then(({ data, error }) => {
     if (error) {
       console.error('Supabase connection error:', error);
     } else {
-      console.log('Supabase connected successfully');
+      console.log('Supabase connected successfully', !!data.session);
     }
   })
   .catch(err => {

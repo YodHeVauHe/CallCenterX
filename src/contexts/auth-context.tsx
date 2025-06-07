@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Get initial session with shorter timeout
+        // Get initial session
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -68,11 +68,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, !!session);
       
+      if (event === 'SIGNED_OUT' || !session) {
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
+        return;
+      }
+
       if (session?.user && mounted) {
         await loadUserProfile(session.user);
-      } else if (mounted) {
-        setUser(null);
-        setLoading(false);
       }
     });
 
@@ -86,33 +91,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Loading user profile for:', supabaseUser.id);
 
-      // Get user profile with shorter timeout and better error handling
-      const { data: profile, error: profileError } = await supabase
+      // First, try to get or create the profile
+      let profile;
+      
+      // Try to get existing profile
+      const { data: existingProfile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
         .single();
 
-      if (profileError) {
+      if (profileError && profileError.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        console.log('Profile not found, creating new profile...');
+        
+        const [firstName, ...lastNameParts] = (supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User').split(' ');
+        const lastName = lastNameParts.join(' ');
+
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: supabaseUser.id,
+            email: supabaseUser.email || '',
+            first_name: firstName,
+            last_name: lastName,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          throw createError;
+        }
+
+        profile = newProfile;
+      } else if (profileError) {
         console.error('Error loading profile:', profileError);
-        
-        // If profile doesn't exist, create a basic user object
-        const userData: User = {
-          id: supabaseUser.id,
-          name: supabaseUser.email?.split('@')[0] || 'User',
-          email: supabaseUser.email || '',
-          avatar: `https://i.pravatar.cc/150?u=${supabaseUser.email}`,
-          organizations: [],
-        };
-        
-        setUser(userData);
-        setLoading(false);
-        return;
+        throw profileError;
+      } else {
+        profile = existingProfile;
       }
 
       console.log('Profile loaded:', profile);
 
-      // Get user organizations with better error handling
+      // Get user organizations
       const { data: userOrgs, error: orgsError } = await supabase
         .from('user_organizations')
         .select(`
@@ -150,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Fallback: create basic user object
       const userData: User = {
         id: supabaseUser.id,
-        name: supabaseUser.email?.split('@')[0] || 'User',
+        name: supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User',
         email: supabaseUser.email || '',
         avatar: `https://i.pravatar.cc/150?u=${supabaseUser.email}`,
         organizations: [],
@@ -179,21 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Login successful');
 
-      if (data.user) {
-        await loadUserProfile(data.user);
-        
-        // Navigate based on whether user has organizations
-        const { data: userOrgs } = await supabase
-          .from('user_organizations')
-          .select('organization_id')
-          .eq('user_id', data.user.id);
-
-        if (userOrgs && userOrgs.length > 0) {
-          navigate('/dashboard');
-        } else {
-          navigate('/setup-organization');
-        }
-      }
+      // The auth state change listener will handle loading the profile
+      // and navigation, so we don't need to do it here
     } catch (error) {
       console.error('Login error:', error);
       setLoading(false);
@@ -231,6 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             first_name: firstName,
             last_name: lastName,
+            full_name: name,
           },
         },
       });
@@ -242,11 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Registration successful');
 
-      if (data.user) {
-        // User will be automatically logged in after email confirmation
-        // For now, redirect to setup organization
-        navigate('/setup-organization');
-      }
+      // The auth state change listener will handle the rest
     } catch (error) {
       console.error('Registration error:', error);
       setLoading(false);
