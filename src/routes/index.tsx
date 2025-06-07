@@ -117,7 +117,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard\" replace />} />
         <Route index element={<Navigate to="/dashboard\" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="dashboard\" element={<Dashboard />} />
         <Route path="knowledge-base" element={<KnowledgeBase />} />
         <Route path="calls" element={<CallsPage />} />
         <Route path="analytics" element={<Analytics />} />
