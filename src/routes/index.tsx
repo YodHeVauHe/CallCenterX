@@ -43,7 +43,7 @@ const ProtectedRoute = ({
   }
 
   if (requiresOrganization && user.organizations.length === 0) {
-    return <Navigate to="/setup-organization" replace />;
+    return <Navigate to="/setup-organization\" replace />;
   }
 
   return <>{children}</>;
@@ -74,7 +74,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<Navigate to="/dashboard\" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="knowledge-base" element={<KnowledgeBase />} />
         <Route path="calls" element={<CallsPage />} />
