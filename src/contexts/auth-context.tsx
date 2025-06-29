@@ -72,26 +72,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔄 Loading user profile for:', userId);
       
-      // Get user profile with timeout
-      const profilePromise = supabase
+      // Get user profile with shorter timeout and better error handling
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
-
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile query timeout')), 30000)
-      );
-
-      const { data: profile, error: profileError } = await Promise.race([
-        profilePromise,
-        timeoutPromise
-      ]) as any;
+        .single()
+        .timeout(10000); // Reduce timeout to 10 seconds
 
       if (profileError) {
         console.error('❌ Error loading profile:', profileError);
-        setLoading(false);
-        return;
+        
+        // If profile doesn't exist, try to create one from auth user
+        if (profileError.code === 'PGRST116') { // No rows returned
+          console.log('🔄 Profile not found, attempting to create one...');
+          
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser) {
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: authUser.id,
+                email: authUser.email!,
+                first_name: authUser.user_metadata?.first_name || '',
+                last_name: authUser.user_metadata?.last_name || '',
+              })
+              .select()
+              .single();
+            
+            if (createError) {
+              console.error('❌ Error creating profile:', createError);
+              setLoading(false);
+              return;
+            }
+            
+            console.log('✅ Profile created successfully:', newProfile);
+            // Use the newly created profile
+            profile = newProfile;
+          } else {
+            console.error('❌ No auth user found to create profile');
+            setLoading(false);
+            return;
+          }
+        } else {
+          // Other errors (timeout, permission, etc.)
+          console.error('❌ Profile query failed:', profileError);
+          setLoading(false);
+          return;
+        }
       }
 
       console.log('✅ Profile loaded:', profile);
@@ -102,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('🔄 Loading organizations for user:', userId);
         
-        const orgsPromise = supabase
+        const { data: userOrgs, error: orgsError } = await supabase
           .from('user_organizations')
           .select(`
             organization_id,
@@ -114,16 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               updated_at
             )
           `)
-          .eq('user_id', userId);
-
-        const orgsTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Organizations query timeout')), 15000)
-        );
-
-        const { data: userOrgs, error: orgsError } = await Promise.race([
-          orgsPromise,
-          orgsTimeoutPromise
-        ]) as any;
+          .eq('user_id', userId)
+          .timeout(8000); // Reduce timeout to 8 seconds
 
         if (orgsError) {
           console.error('⚠️ Error loading organizations:', orgsError);
@@ -171,6 +191,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('❌ Error loading user profile:', error);
+      
+      // If it's a timeout or connection error, try to sign out the user
+      if (error instanceof Error && (
+        error.message.includes('timeout') || 
+        error.message.includes('network') ||
+        error.message.includes('fetch')
+      )) {
+        console.log('🔄 Connection issue detected, signing out user...');
+        await supabase.auth.signOut();
+      }
+      
       setLoading(false);
     }
   };
