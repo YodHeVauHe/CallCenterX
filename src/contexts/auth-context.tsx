@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile query timeout')), 10000)
+        setTimeout(() => reject(new Error('Profile query timeout')), 30000)
       );
 
       const { data: profile, error: profileError } = await Promise.race([
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('user_id', userId);
 
         const orgsTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Organizations query timeout')), 5000)
+          setTimeout(() => reject(new Error('Organizations query timeout')), 15000)
         );
 
         const { data: userOrgs, error: orgsError } = await Promise.race([
