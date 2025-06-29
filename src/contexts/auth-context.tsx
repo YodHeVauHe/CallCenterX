@@ -78,7 +78,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('id', userId)
         .single();
-
       if (profileError) {
         console.error('❌ Error loading profile:', profileError);
         
