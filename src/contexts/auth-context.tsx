@@ -110,16 +110,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (orgsError) {
           console.error('⚠️ Error loading organizations:', orgsError);
           // Continue with empty organizations array instead of failing
+          organizations = [];
         } else if (userOrgs) {
           console.log('📊 Raw organization data:', userOrgs);
           organizations = userOrgs
             .map(uo => uo.organizations)
             .filter(Boolean) as Organization[];
           console.log('✅ Processed organizations:', organizations);
+        } else {
+          console.log('ℹ️ No organizations found for user');
+          organizations = [];
         }
       } catch (orgError) {
         console.error('❌ Failed to load organizations:', orgError);
         // Continue with empty organizations array
+        organizations = [];
       }
 
       const userData: User = {
