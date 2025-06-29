@@ -72,12 +72,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔄 Loading user profile for:', userId);
       
-      // Get user profile
-      const { data: profile, error: profileError } = await supabase
+      // Get user profile with timeout
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile query timeout')), 10000)
+      );
+
+      const { data: profile, error: profileError } = await Promise.race([
+        profilePromise,
+        timeoutPromise
+      ]) as any;
 
       if (profileError) {
         console.error('❌ Error loading profile:', profileError);
@@ -87,13 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('✅ Profile loaded:', profile);
 
-      // Get user organizations with better error handling
+      // Try to load organizations with timeout and fallback
       let organizations: Organization[] = [];
       
       try {
         console.log('🔄 Loading organizations for user:', userId);
         
-        const { data: userOrgs, error: orgsError } = await supabase
+        const orgsPromise = supabase
           .from('user_organizations')
           .select(`
             organization_id,
@@ -107,11 +116,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           `)
           .eq('user_id', userId);
 
+        const orgsTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Organizations query timeout')), 5000)
+        );
+
+        const { data: userOrgs, error: orgsError } = await Promise.race([
+          orgsPromise,
+          orgsTimeoutPromise
+        ]) as any;
+
         if (orgsError) {
           console.error('⚠️ Error loading organizations:', orgsError);
-          // Continue with empty organizations array instead of failing
           organizations = [];
-        } else if (userOrgs) {
+        } else if (userOrgs && Array.isArray(userOrgs)) {
           console.log('📊 Raw organization data:', userOrgs);
           organizations = userOrgs
             .map(uo => uo.organizations)
@@ -122,8 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           organizations = [];
         }
       } catch (orgError) {
-        console.error('❌ Failed to load organizations:', orgError);
-        // Continue with empty organizations array
+        console.error('❌ Failed to load organizations (using fallback):', orgError);
         organizations = [];
       }
 
