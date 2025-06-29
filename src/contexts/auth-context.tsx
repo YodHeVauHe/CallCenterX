@@ -85,28 +85,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Get user organizations
-      const { data: userOrgs, error: orgsError } = await supabase
-        .from('user_organizations')
-        .select(`
-          organization_id,
-          organizations (
-            id,
-            name,
-            slug,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', userId);
+      console.log('Profile loaded:', profile);
 
-      if (orgsError) {
-        console.error('Error loading organizations:', orgsError);
-        // Don't fail completely if organizations can't be loaded
-        // Set empty organizations array and continue
+      // Get user organizations with better error handling
+      let organizations: Organization[] = [];
+      
+      try {
+        const { data: userOrgs, error: orgsError } = await supabase
+          .from('user_organizations')
+          .select(`
+            organization_id,
+            organizations (
+              id,
+              name,
+              slug,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('user_id', userId);
+
+        if (orgsError) {
+          console.error('Error loading organizations:', orgsError);
+          // Continue with empty organizations array instead of failing
+        } else if (userOrgs) {
+          organizations = userOrgs
+            .map(uo => uo.organizations)
+            .filter(Boolean) as Organization[];
+        }
+      } catch (orgError) {
+        console.error('Failed to load organizations:', orgError);
+        // Continue with empty organizations array
       }
-
-      const organizations: Organization[] = userOrgs?.map(uo => uo.organizations).filter(Boolean) || [];
 
       const userData: User = {
         id: profile.id,
@@ -221,9 +231,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (authUser) {
         await loadUserProfile(authUser.id);
+      } else {
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
+      setLoading(false);
     }
   };
 
