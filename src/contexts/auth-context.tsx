@@ -102,6 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (orgsError) {
         console.error('Error loading organizations:', orgsError);
+        // Don't fail completely if organizations can't be loaded
+        // Set empty organizations array and continue
       }
 
       const organizations: Organization[] = userOrgs?.map(uo => uo.organizations).filter(Boolean) || [];
