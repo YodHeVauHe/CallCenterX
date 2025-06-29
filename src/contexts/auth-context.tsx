@@ -77,8 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()
-        .timeout(10000); // Reduce timeout to 10 seconds
+        .single();
 
       if (profileError) {
         console.error('❌ Error loading profile:', profileError);
@@ -143,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             )
           `)
           .eq('user_id', userId)
-          .timeout(8000); // Reduce timeout to 8 seconds
+          ;
 
         if (orgsError) {
           console.error('⚠️ Error loading organizations:', orgsError);
