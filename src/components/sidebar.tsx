@@ -5,9 +5,9 @@ import {
   BarChart2,
   FileText,
   Home,
+  Headset,
   Phone,
   Settings,
-  Terminal,
   Circle,
 } from 'lucide-react';
 
@@ -31,7 +31,7 @@ export function Sidebar({ open }: SidebarProps) {
       <div className="hidden md:flex w-14 shrink-0 flex-col border-r border-border bg-card">
         {/* Logo mark */}
         <div className="flex h-12 items-center justify-center border-b border-border">
-          <Terminal className="h-4 w-4 text-primary" />
+          <Headset className="h-4 w-4 text-primary" />
         </div>
         <ScrollArea className="flex-1 py-3">
           <div className="flex flex-col items-center gap-1 px-2">

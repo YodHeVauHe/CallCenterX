@@ -1,4 +1,4 @@
-import { Bell, Menu, X, Terminal } from 'lucide-react';
+import { Bell, Menu, X, Headset } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -48,7 +48,7 @@ export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
 
       {/* Brand — always visible, left-anchored */}
       <div className="flex items-center gap-2 shrink-0">
-        <Terminal className="h-4 w-4 text-primary" />
+        <Headset className="h-4 w-4 text-primary" />
         <span className="text-sm font-semibold tracking-tight">
           <span className="text-primary">Call</span>
           <span className="text-foreground">Center</span>
