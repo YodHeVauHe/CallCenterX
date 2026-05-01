@@ -1,71 +1,71 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { useAuth } from './auth-context';
+import { getToken } from '@/lib/api';
 
 type SocketContextType = {
   connected: boolean;
-  sendMessage: (event: string, data: any) => void;
-  subscribeToEvent: (event: string, callback: (data: any) => void) => void;
+  sendMessage: (event: string, data: unknown) => void;
+  subscribeToEvent: (event: string, callback: (data: unknown) => void) => void;
   unsubscribeFromEvent: (event: string) => void;
 };
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
+const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState(false);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [eventListeners, setEventListeners] = useState<Record<string, ((data: any) => void)[]>>({});
+  const socketRef = useRef<Socket | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user) return;
 
-    // In a real app, this would connect to a real WebSocket server
-    // For now, we'll simulate the connection
-    console.log('Simulating WebSocket connection...');
-    setConnected(true);
+    const token = getToken();
+    const socket = io(SERVER_URL, {
+      auth: { token },
+      transports: ['websocket'],
+    });
 
-    // Clean up on unmount
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Socket.io connected:', socket.id);
+      setConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket.io disconnected');
+      setConnected(false);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket.io connection error:', err.message);
+      setConnected(false);
+    });
+
     return () => {
-      if (socket) {
-        socket.close();
-      }
+      socket.disconnect();
+      socketRef.current = null;
       setConnected(false);
     };
   }, [user]);
 
-  const sendMessage = (event: string, data: any) => {
-    if (!connected) return;
-    console.log(`Sending event: ${event}`, data);
-    // In a real app, this would send to the WebSocket
-    // socket?.send(JSON.stringify({ event, data }));
+  const sendMessage = (event: string, data: unknown) => {
+    socketRef.current?.emit(event, data);
   };
 
-  const subscribeToEvent = (event: string, callback: (data: any) => void) => {
-    setEventListeners((prev) => {
-      const listeners = prev[event] || [];
-      return {
-        ...prev,
-        [event]: [...listeners, callback],
-      };
-    });
+  const subscribeToEvent = (event: string, callback: (data: unknown) => void) => {
+    socketRef.current?.on(event, callback);
   };
 
   const unsubscribeFromEvent = (event: string) => {
-    setEventListeners((prev) => {
-      const { [event]: _, ...rest } = prev;
-      return rest;
-    });
+    socketRef.current?.off(event);
   };
 
   return (
-    <SocketContext.Provider
-      value={{
-        connected,
-        sendMessage,
-        subscribeToEvent,
-        unsubscribeFromEvent,
-      }}
-    >
+    <SocketContext.Provider value={{ connected, sendMessage, subscribeToEvent, unsubscribeFromEvent }}>
       {children}
     </SocketContext.Provider>
   );

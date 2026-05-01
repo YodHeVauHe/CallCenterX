@@ -11,8 +11,19 @@ export default {
     extend: {
       borderRadius: {
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        md: 'var(--radius)',
+        sm: 'calc(var(--radius) - 2px)',
+      },
+      fontFamily: {
+        sans: ['"Ubuntu"', 'system-ui', 'sans-serif'],
+        mono: ['"Ubuntu Mono"', 'ui-monospace', 'monospace'],
+      },
+      colors: {
+        'terminal-green': 'hsl(142 71% 45%)',
+        'terminal-cyan': 'hsl(199 89% 48%)',
+        'terminal-amber': 'hsl(43 96% 56%)',
+        'terminal-red': 'hsl(0 70% 50%)',
+        'terminal-purple': 'hsl(262 83% 58%)',
       },
       colors: {
         background: 'hsl(var(--background))',

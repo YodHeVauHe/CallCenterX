@@ -8,7 +8,7 @@ import { SocketProvider } from '@/contexts/socket-context';
 function App() {
   return (
     <Router>
-      <ThemeProvider defaultTheme="light" storageKey="callcenterx-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="callcenterx-theme">
         <AuthProvider>
           <SocketProvider>
             <AppRoutes />

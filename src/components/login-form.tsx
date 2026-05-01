@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "@/hooks/use-toast"
+import { Loader2, LogIn } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -24,20 +24,13 @@ export function LoginForm({
     try {
       setIsLoading(true)
       await login(email, password)
-      
-      toast({
-        title: "Success",
-        description: "Successfully logged in!",
-      })
-      
-      // Navigation will be handled by the auth context and route protection
+      toast({ title: "Success", description: "Signed in successfully." })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Invalid email or password."
-      
       toast({
-        title: "Error",
-        description: errorMessage === "Email not confirmed" 
-          ? "Your email address has not been confirmed. Please check your inbox for a verification link."
+        title: "Sign in failed",
+        description: errorMessage === "Email not confirmed"
+          ? "Your email has not been verified. Please check your inbox."
           : errorMessage,
         variant: "destructive",
       })
@@ -47,64 +40,78 @@ export function LoginForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
-        <CardContent className="p-0">
-          <form onSubmit={onSubmit} className="p-6 md:p-8">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col items-center text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
-                <p className="text-muted-foreground text-balance">
-                  Login to your CallCenterX account
-                </p>
-              </div>
-              <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="grid gap-3">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
-                    className="ml-auto text-sm underline-offset-2 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-                <Input 
-                  id="password" 
-                  name="password" 
-                  type="password" 
-                  required 
-                  disabled={isLoading}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Login"}
-              </Button>
-              <div className="text-center text-sm">
-                Don&apos;t have an account?{" "}
-                <Link to="/register" className="underline underline-offset-4">
-                  Sign up
-                </Link>
-              </div>
+    <div className={cn("flex flex-col", className)} {...props}>
+      <div className="terminal-surface rounded-b overflow-hidden">
+        <form onSubmit={onSubmit} className="px-6 py-6 space-y-5">
+          {/* Header */}
+          <div className="space-y-1">
+            <h1 className="text-lg font-semibold text-foreground">Welcome back</h1>
+            <p className="text-sm text-muted-foreground">
+              Sign in to your CallCenterX account
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@company.com"
+                required
+                disabled={isLoading}
+                className="h-9 bg-background border-border focus-visible:ring-primary"
+              />
             </div>
-          </form>
-        </CardContent>
-      </Card>
-      <div className="text-muted-foreground text-center text-xs text-balance">
-        By clicking continue, you agree to our{" "}
-        <a href="#" className="underline underline-offset-4 hover:text-primary">Terms of Service</a>{" "}
-        and{" "}
-        <a href="#" className="underline underline-offset-4 hover:text-primary">Privacy Policy</a>.
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm">Password</Label>
+                <a href="#" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                  Forgot password?
+                </a>
+              </div>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                disabled={isLoading}
+                className="h-9 bg-background border-border focus-visible:ring-primary"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full h-9 bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</>
+            ) : (
+              <><LogIn className="mr-2 h-4 w-4" />Sign In</>
+            )}
+          </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-primary hover:underline underline-offset-4">
+              Create one
+            </Link>
+          </p>
+        </form>
+
+        <div className="flex items-center justify-center border-t border-border px-6 py-3">
+          <span className="text-xs text-muted-foreground">
+            By signing in you agree to our{" "}
+            <a href="#" className="hover:text-primary transition-colors underline underline-offset-4">Terms</a>
+            {" "}and{" "}
+            <a href="#" className="hover:text-primary transition-colors underline underline-offset-4">Privacy Policy</a>.
+          </span>
+        </div>
       </div>
     </div>
   )

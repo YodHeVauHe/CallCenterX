@@ -1,6 +1,6 @@
-import { Bell, Menu, X } from 'lucide-react';
+import { Bell, Menu, X, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,47 +10,67 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/auth-context';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { useLocation } from 'react-router-dom';
 
 interface HeaderProps {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
 }
 
+const routeLabels: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/calls': 'Calls',
+  '/knowledge-base': 'Knowledge Base',
+  '/analytics': 'Analytics',
+  '/settings': 'Settings',
+};
+
 export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { pathname } = useLocation();
+  const routeLabel = routeLabels[pathname] ?? pathname.replace('/', '');
+  const initials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-border bg-card px-4 gap-4">
+      {/* Mobile menu toggle */}
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden"
+        className="md:hidden h-8 w-8"
         onClick={() => setSidebarOpen(!sidebarOpen)}
       >
-        {sidebarOpen ? (
-          <X className="h-5 w-5" />
-        ) : (
-          <Menu className="h-5 w-5" />
-        )}
+        {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         <span className="sr-only">Toggle Menu</span>
       </Button>
-      
-      <div className="hidden md:block">
-        <h1 className="text-xl font-semibold">
+
+      {/* Brand — always visible, left-anchored */}
+      <div className="flex items-center gap-2 shrink-0">
+        <Terminal className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold tracking-tight">
           <span className="text-primary">Call</span>
-          <span className="text-blue-600">Center</span>
+          <span className="text-foreground">Center</span>
           <span className="text-primary">X</span>
-        </h1>
+        </span>
       </div>
+
+      {/* Divider */}
+      <div className="hidden md:block h-5 w-px bg-border" />
+
+      {/* Current page title */}
+      <span className="hidden md:block text-sm font-medium text-foreground">
+        {routeLabel}
+      </span>
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-4">
-        <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive" />
+      {/* Right controls */}
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Bell className="h-4 w-4" />
+          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
           <span className="sr-only">Notifications</span>
         </Button>
 
@@ -58,29 +78,26 @@ export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="relative h-9 w-9 rounded-full"
+              className="h-8 gap-2 px-2 text-sm text-muted-foreground hover:text-foreground"
               aria-label="User menu"
             >
-              <Avatar className="h-9 w-9">
-                <AvatarImage 
-                  src={user?.avatar || "https://github.com/shadcn.png"} 
-                  alt={user?.name || "User"} 
-                />
-                <AvatarFallback>
-                  {user?.name?.charAt(0) || "U"}
+              <Avatar className="h-6 w-6 rounded">
+                <AvatarFallback className="rounded text-[10px] bg-primary/20 text-primary font-semibold">
+                  {initials}
                 </AvatarFallback>
               </Avatar>
+              <span className="hidden sm:block text-sm">{user?.name ?? 'User'}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.name}</p>
-                <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-foreground">{user?.name}</span>
+                <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
                 {user?.organizations && user.organizations.length > 0 && (
-                  <p className="text-xs leading-none text-muted-foreground">
+                  <span className="text-xs text-primary">
                     {user.organizations.length} organization{user.organizations.length > 1 ? 's' : ''}
-                  </p>
+                  </span>
                 )}
               </div>
             </DropdownMenuLabel>
@@ -88,7 +105,12 @@ export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={logout}
+            >
+              Log out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

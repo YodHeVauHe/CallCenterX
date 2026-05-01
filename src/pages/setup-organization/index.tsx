@@ -1,55 +1,29 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { supabase } from '@/lib/supabase';
-import { Building2, Users, GraduationCap, Rocket, Briefcase, Building } from 'lucide-react';
+import { api } from '@/lib/api';
+import { Building2, Users, GraduationCap, Rocket, Briefcase, Building, Loader2, ArrowRight } from 'lucide-react';
 
 const organizationTypes = [
-  {
-    value: 'personal',
-    label: 'Personal',
-    description: 'For individual use and personal projects',
-    icon: Users,
-  },
-  {
-    value: 'educational',
-    label: 'Educational',
-    description: 'For schools, universities, and educational institutions',
-    icon: GraduationCap,
-  },
-  {
-    value: 'startup',
-    label: 'StartUp',
-    description: 'For early-stage companies and entrepreneurs',
-    icon: Rocket,
-  },
-  {
-    value: 'agency',
-    label: 'Agency',
-    description: 'For marketing agencies and service providers',
-    icon: Briefcase,
-  },
-  {
-    value: 'company',
-    label: 'Company',
-    description: 'For established businesses and enterprises',
-    icon: Building,
-  },
+  { value: 'personal',    label: 'Personal',    description: 'For individual use and personal projects',               icon: Users },
+  { value: 'educational', label: 'Educational', description: 'For schools, universities, and educational institutions', icon: GraduationCap },
+  { value: 'startup',     label: 'Startup',     description: 'For early-stage companies and entrepreneurs',            icon: Rocket },
+  { value: 'agency',      label: 'Agency',      description: 'For marketing agencies and service providers',           icon: Briefcase },
+  { value: 'company',     label: 'Company',     description: 'For established businesses and enterprises',             icon: Building },
 ];
 
 const companySizes = [
-  { value: '1', label: 'Just me' },
-  { value: '2-10', label: '2-10 people' },
-  { value: '11-50', label: '11-50 people' },
-  { value: '51-200', label: '51-200 people' },
-  { value: '201-500', label: '201-500 people' },
-  { value: '500+', label: '500+ people' },
+  { value: '1',       label: 'Just me' },
+  { value: '2-10',    label: '2–10 people' },
+  { value: '11-50',   label: '11–50 people' },
+  { value: '51-200',  label: '51–200 people' },
+  { value: '201-500', label: '201–500 people' },
+  { value: '500+',    label: '500+ people' },
 ];
 
 export function SetupOrganization() {
@@ -60,96 +34,35 @@ export function SetupOrganization() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
+  const generateSlug = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!organizationName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Organization name is required.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Organization name is required.', variant: 'destructive' });
       return;
     }
-
     if (!organizationType) {
-      toast({
-        title: 'Error',
-        description: 'Please select an organization type.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Please select an organization type.', variant: 'destructive' });
       return;
     }
-
     if (!user) {
-      toast({
-        title: 'Error',
-        description: 'You must be logged in to create an organization.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'You must be logged in to create an organization.', variant: 'destructive' });
       return;
     }
 
     try {
       setIsLoading(true);
-      console.log('Creating organization:', organizationName);
-
-      // Create organization
-      const { data: organization, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: organizationName.trim(),
-          slug: generateSlug(organizationName),
-        })
-        .select()
-        .single();
-
-      if (orgError) {
-        console.error('Error creating organization:', orgError);
-        throw new Error(orgError.message);
-      }
-
-      console.log('Organization created:', organization);
-
-      // Link user to organization
-      const { error: linkError } = await supabase
-        .from('user_organizations')
-        .insert({
-          user_id: user.id,
-          organization_id: organization.id,
-        });
-
-      if (linkError) {
-        console.error('Error linking user to organization:', linkError);
-        throw new Error(linkError.message);
-      }
-
-      console.log('User linked to organization successfully');
-
-      // Refresh user data to include new organization
+      await api.organizations.create(organizationName.trim(), generateSlug(organizationName));
       await refreshUser();
-
-      toast({
-        title: 'Success!',
-        description: 'Your organization has been created successfully.',
-      });
-
-      // Redirect to dashboard
+      toast({ title: 'Organization created', description: 'Your organization has been set up successfully.' });
       navigate('/dashboard');
     } catch (error) {
-      console.error('Organization setup error:', error);
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create organization. Please try again.',
+        title: 'Failed to create organization',
+        description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -158,117 +71,122 @@ export function SetupOrganization() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl">
-        <Card className="border-0 shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-          <CardHeader className="text-center pb-8 pt-12">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg">
-              <Building2 className="h-8 w-8 text-white" />
-            </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              Create a new organization
-            </CardTitle>
-            <CardDescription className="text-lg text-slate-600 dark:text-slate-400 mt-3">
-              This is your organization within CallCenterX.
-              <br />
-              For example, you can use the name of your company or department.
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="px-12 pb-12">
-            <form onSubmit={onSubmit} className="space-y-8">
-              <div className="space-y-3">
-                <Label htmlFor="organizationName" className="text-base font-medium text-slate-700 dark:text-slate-300">
-                  Name
-                </Label>
-                <Input
-                  id="organizationName"
-                  value={organizationName}
-                  onChange={(e) => setOrganizationName(e.target.value)}
-                  placeholder="What's the name of your company or team?"
-                  required
-                  disabled={isLoading}
-                  className="h-14 text-lg border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-slate-800"
-                />
-              </div>
+    <div className="dark min-h-svh bg-background flex items-center justify-center p-6">
+      {/* Background grid pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `linear-gradient(hsl(142 71% 45%) 1px, transparent 1px), linear-gradient(90deg, hsl(142 71% 45%) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px',
+        }}
+      />
 
-              <div className="space-y-3">
-                <Label className="text-base font-medium text-slate-700 dark:text-slate-300">
-                  Type
-                </Label>
-                <Select value={organizationType} onValueChange={setOrganizationType} disabled={isLoading}>
-                  <SelectTrigger className="h-14 text-lg border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-slate-800">
-                    <SelectValue placeholder="What would best describe your organization?" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    {organizationTypes.map((type) => {
-                      const IconComponent = type.icon;
-                      return (
-                        <SelectItem 
-                          key={type.value} 
-                          value={type.value}
-                          className="py-4 px-4 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-slate-50 dark:focus:bg-slate-700"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
-                              <IconComponent className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-slate-900 dark:text-white">{type.label}</span>
-                              <span className="text-sm text-slate-500 dark:text-slate-400">{type.description}</span>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+      <div className="relative w-full max-w-sm">
+        {/* Terminal window chrome */}
+        <div className="mb-1 flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-t border border-b-0 border-border">
+          <span className="h-2.5 w-2.5 rounded-full bg-destructive opacity-70" />
+          <span className="h-2.5 w-2.5 rounded-full bg-terminal-amber opacity-70" />
+          <span className="h-2.5 w-2.5 rounded-full bg-terminal-green opacity-70" />
+          <span className="ml-auto text-xs text-muted-foreground">CallCenterX — New Organization</span>
+        </div>
 
-              <div className="space-y-3">
-                <Label className="text-base font-medium text-slate-700 dark:text-slate-300">
-                  Company size
-                </Label>
-                <Select value={companySize} onValueChange={setCompanySize} disabled={isLoading}>
-                  <SelectTrigger className="h-14 text-lg border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-slate-800">
-                    <SelectValue placeholder="How many people are in your company?" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    {companySizes.map((size) => (
-                      <SelectItem 
-                        key={size.value} 
-                        value={size.value}
-                        className="py-3 hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-slate-50 dark:focus:bg-slate-700"
-                      >
-                        {size.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="pt-6 flex items-center justify-between">
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  You can rename your organization later
+        {/* Form card */}
+        <div className="terminal-surface rounded-b overflow-hidden">
+          <form onSubmit={onSubmit} className="px-6 py-6 space-y-5">
+            {/* Header */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-primary/10 border border-primary/20">
+                  <Building2 className="h-4 w-4 text-primary" />
                 </div>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading || !organizationName.trim() || !organizationType}
-                  className="h-12 px-8 text-base font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                      Creating organization...
-                    </>
-                  ) : (
-                    "Create organization"
-                  )}
-                </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+              <h1 className="text-lg font-semibold text-foreground">Create your organization</h1>
+              <p className="text-sm text-muted-foreground">
+                This is your workspace within CallCenterX. You can use your company or team name.
+              </p>
+            </div>
+
+            {/* Organization name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="organizationName" className="text-sm">Organization Name</Label>
+              <Input
+                id="organizationName"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+                placeholder="e.g. Acme Corp"
+                required
+                disabled={isLoading}
+                className="h-9 bg-background border-border focus-visible:ring-primary"
+              />
+            </div>
+
+            {/* Type — button grid */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Organization Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {organizationTypes.map((type) => {
+                  const Icon = type.icon;
+                  const active = organizationType === type.value;
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => setOrganizationType(type.value)}
+                      className={`flex items-center gap-2.5 rounded border px-3 py-2.5 text-left transition-colors ${
+                        active
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      }`}
+                    >
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded ${active ? 'bg-primary/20' : 'bg-secondary'}`}>
+                        <Icon className={`h-3.5 w-3.5 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </div>
+                      <span className="text-sm font-medium">{type.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Company size */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Company Size</Label>
+              <Select value={companySize} onValueChange={setCompanySize} disabled={isLoading}>
+                <SelectTrigger className="h-9 bg-background border-border focus:ring-primary">
+                  <SelectValue placeholder="How many people?" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  {companySizes.map((size) => (
+                    <SelectItem key={size.value} value={size.value} className="text-sm focus:bg-secondary">
+                      {size.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="w-full h-9 bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={isLoading || !organizationName.trim() || !organizationType}
+            >
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating organization...</>
+              ) : (
+                <>Create Organization<ArrowRight className="ml-2 h-4 w-4" /></>
+              )}
+            </Button>
+          </form>
+
+          {/* Footer note */}
+          <div className="flex items-center justify-center border-t border-border px-6 py-3">
+            <span className="text-xs text-muted-foreground">
+              You can rename your organization later in Settings.
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

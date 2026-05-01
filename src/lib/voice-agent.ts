@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { pipeline } from '@xenova/transformers';
-import { useSocket } from '@/contexts/socket-context';
-import { useToast } from '@/hooks/use-toast';
+import { getToken } from '@/lib/api';
 
 interface VoiceConfig {
   voiceId: string;
@@ -11,6 +10,8 @@ interface VoiceConfig {
   speakerBoost: boolean;
 }
 
+const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
 export class VoiceAgent {
   private socket: WebSocket | null = null;
   private audioContext: AudioContext;
@@ -18,7 +19,6 @@ export class VoiceAgent {
   private voiceConfig: VoiceConfig;
   private sessionId: string;
   private pipeline: any;
-  private toast: any;
 
   constructor(voiceConfig: VoiceConfig) {
     this.voiceConfig = voiceConfig;
@@ -32,11 +32,6 @@ export class VoiceAgent {
       this.pipeline = await pipeline('automatic-speech-recognition', 'Xenova/whisper-small');
     } catch (error) {
       console.error('Failed to initialize ASR pipeline:', error);
-      this.toast({
-        title: 'Error',
-        description: 'Failed to initialize voice system',
-        variant: 'destructive',
-      });
     }
   }
 
@@ -47,18 +42,13 @@ export class VoiceAgent {
       this.connectWebSocket();
     } catch (error) {
       console.error('Failed to start call:', error);
-      this.toast({
-        title: 'Error',
-        description: 'Failed to access microphone',
-        variant: 'destructive',
-      });
     }
   }
 
   private setupAudioProcessing(stream: MediaStream) {
     const source = this.audioContext.createMediaStreamSource(stream);
     const processor = this.audioContext.createScriptProcessor(1024, 1, 1);
-    
+
     source.connect(processor);
     processor.connect(this.audioContext.destination);
 
@@ -79,7 +69,7 @@ export class VoiceAgent {
         this.socket.send(JSON.stringify({
           type: 'transcription',
           sessionId: this.sessionId,
-          text: transcription
+          text: transcription,
         }));
       }
     } catch (error) {
@@ -88,38 +78,39 @@ export class VoiceAgent {
   }
 
   private connectWebSocket() {
-    const wsUrl = `${import.meta.env.VITE_SUPABASE_URL}/realtime/v1/voice`;
+    // Connect to the socket.io server's websocket endpoint
+    const wsUrl = SERVER_URL.replace(/^http/, 'ws') + '/socket.io/?EIO=4&transport=websocket';
     this.socket = new WebSocket(wsUrl);
 
     this.socket.onmessage = this.handleServerMessage.bind(this);
     this.socket.onerror = (error) => {
       console.error('WebSocket error:', error);
-      this.toast({
-        title: 'Connection Error',
-        description: 'Lost connection to voice server',
-        variant: 'destructive',
-      });
     };
   }
 
   private async handleServerMessage(event: MessageEvent) {
-    const data = JSON.parse(event.data);
-    if (data.type === 'response') {
-      await this.synthesizeAndPlay(data.text);
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === 'response') {
+        await this.synthesizeAndPlay(data.text);
+      }
+    } catch {
+      // ignore non-JSON frames (socket.io handshake frames)
     }
   }
 
   private async synthesizeAndPlay(text: string) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/synthesize`, {
+      const token = getToken();
+      const response = await fetch(`${SERVER_URL}/api/synthesize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           text,
-          voiceConfig: this.voiceConfig
+          voiceConfig: this.voiceConfig,
         }),
       });
 
@@ -129,11 +120,6 @@ export class VoiceAgent {
       await audio.play();
     } catch (error) {
       console.error('Error synthesizing speech:', error);
-      this.toast({
-        title: 'Error',
-        description: 'Failed to synthesize speech',
-        variant: 'destructive',
-      });
     }
   }
 

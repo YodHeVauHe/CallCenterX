@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "@/hooks/use-toast"
+import { Loader2, UserPlus } from "lucide-react"
 
 export function RegisterForm({
   className,
@@ -25,16 +25,13 @@ export function RegisterForm({
     try {
       setIsLoading(true)
       await register(email, password, name)
-      
       toast({
-        title: "Success",
-        description: "Account created successfully! Please check your email for verification if required.",
+        title: "Account created",
+        description: "Please verify your email if required.",
       })
-      
-      // Navigation will be handled by the auth context and route protection
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Registration failed",
         description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       })
@@ -44,67 +41,85 @@ export function RegisterForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
-        <CardContent className="p-0">
-          <form onSubmit={onSubmit} className="p-6 md:p-8">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col items-center text-center">
-                <h1 className="text-2xl font-bold">Create an account</h1>
-                <p className="text-muted-foreground text-balance">
-                  Start your AI call center journey
-                </p>
-              </div>
-              <div className="grid gap-3">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="John Doe"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="john@company.com"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="grid gap-3">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Create a strong password"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create Account"}
-              </Button>
-              <div className="text-center text-sm">
-                Already have an account?{" "}
-                <Link to="/login" className="underline underline-offset-4">
-                  Sign in
-                </Link>
-              </div>
+    <div className={cn("flex flex-col", className)} {...props}>
+      <div className="terminal-surface rounded-b overflow-hidden">
+        <form onSubmit={onSubmit} className="px-6 py-6 space-y-5">
+          {/* Header */}
+          <div className="space-y-1">
+            <h1 className="text-lg font-semibold text-foreground">Create an account</h1>
+            <p className="text-sm text-muted-foreground">
+              Start managing your AI call center
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-sm">Full Name</Label>
+              <Input
+                id="name"
+                name="name"
+                placeholder="Jane Smith"
+                required
+                disabled={isLoading}
+                className="h-9 bg-background border-border focus-visible:ring-primary"
+              />
             </div>
-          </form>
-        </CardContent>
-      </Card>
-      <div className="text-muted-foreground text-center text-xs text-balance">
-        By creating an account, you agree to our{" "}
-        <a href="#" className="underline underline-offset-4 hover:text-primary">Terms of Service</a>{" "}
-        and{" "}
-        <a href="#" className="underline underline-offset-4 hover:text-primary">Privacy Policy</a>.
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="jane@company.com"
+                required
+                disabled={isLoading}
+                className="h-9 bg-background border-border focus-visible:ring-primary"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Minimum 8 characters"
+                required
+                disabled={isLoading}
+                className="h-9 bg-background border-border focus-visible:ring-primary"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full h-9 bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account...</>
+            ) : (
+              <><UserPlus className="mr-2 h-4 w-4" />Create Account</>
+            )}
+          </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary hover:underline underline-offset-4">
+              Sign in
+            </Link>
+          </p>
+        </form>
+
+        <div className="flex items-center justify-center border-t border-border px-6 py-3">
+          <span className="text-xs text-muted-foreground">
+            By creating an account you agree to our{" "}
+            <a href="#" className="hover:text-primary transition-colors underline underline-offset-4">Terms</a>
+            {" "}and{" "}
+            <a href="#" className="hover:text-primary transition-colors underline underline-offset-4">Privacy Policy</a>.
+          </span>
+        </div>
       </div>
     </div>
   )
